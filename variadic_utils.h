@@ -57,22 +57,39 @@ struct type_identity {
 };
 
 template<typename... Types>
-struct find_overload;
+struct find_overload_bool;
 
 template<typename T, typename... Types>
-struct find_overload<T, Types...> : find_overload<Types...> {
-  using find_overload<Types...>::operator();
-
+struct find_overload_bool<T, Types...> : find_overload_bool<Types...> {
+  using find_overload_bool<Types...>::operator();
   type_identity<T> operator()(T value) {}
 };
 
 template<typename T>
-struct find_overload<T> {
+struct find_overload_bool<T> {
   type_identity<T> operator()(T value) {}
 };
 
+template<bool is_bool, typename... Types>
+struct find_overload_impl;
+
+template<bool is_bool, typename T, typename... Types>
+struct find_overload_impl<is_bool, T, Types...> : find_overload_impl<is_bool, Types...> {
+  using find_overload_impl<is_bool, Types...>::operator();
+
+  template<typename U = T>
+  std::enable_if_t<!std::is_same_v<std::decay_t<T>, bool> || is_bool, type_identity<U>> operator()(T value) {}
+};
+
+template<bool is_bool, typename T>
+struct find_overload_impl<is_bool, T> {
+  template<typename U = T>
+  std::enable_if_t<!std::is_same_v<std::decay_t<T>, bool> || is_bool, type_identity<U>> operator()(T value) {}
+};
+
 template<typename U, typename... Types>
-using find_overload_v = typename std::invoke_result_t<find_overload<Types...>, U>::type;
+using find_overload_t = typename std::invoke_result_t<find_overload_impl<std::is_same_v<std::decay_t<U>, bool>,
+                                                                         Types...>, U>::type;
 
 template<class T>
 struct in_place_type_t {

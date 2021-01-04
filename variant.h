@@ -19,6 +19,19 @@ struct variant {
   constexpr variant(variant const&) = default;
   constexpr variant(variant&&) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) = default;
 
+  constexpr variant& operator=(variant const&) = default;
+
+  void swap(variant& other) noexcept(((std::is_nothrow_move_constructible_v<Ts> &&
+      std::is_nothrow_swappable_v<Ts>) && ...)) {
+    if (this->valueless_by_exception() && other.valueless_by_exception()) {
+      return;
+    }
+    if (this->index() == other.index()) {
+      using std::swap;
+      //swap(gt
+    }
+  }
+
   template<typename U, typename... Args, std::enable_if_t<
       cnt_type_v<U, Ts...> == 1 && std::is_constructible_v<U, Args...>, int> = 0>
   constexpr explicit variant(in_place_type_t<U> in_place_flag, Args&& ...args)
@@ -31,9 +44,14 @@ struct variant {
   } // TODO: enable_if for I < sizeof...(Ts) and constructible
 
   template<typename T, std::enable_if_t<
-      !std::is_same_v<std::decay_t<T>, variant> && !is_specialization<T, in_place_type_t>::value
-          && !is_size_spec<T, in_place_index_t>::value, int> = 0>
-  constexpr variant(T&& t) : storage(in_place_type_t<find_overload_v<T, Ts...>>(), std::forward<T>(t)) {}
+      (sizeof...(Ts) > 0)
+          && !std::is_same_v<std::decay_t<T>, variant>
+          && !is_specialization<T, in_place_type_t>::value
+          && !is_size_spec<T, in_place_index_t>::value
+          && exactly_once<find_overload_t<T, Ts...>, Ts...>::value
+          && std::is_constructible_v<find_overload_t<T, Ts...>, T>, int> = 0>
+  constexpr variant(T&& t) noexcept(std::is_nothrow_constructible_v<find_overload_t<T, Ts...>, T>)
+      : storage(in_place_type_t<find_overload_t<T, Ts...>>(), std::forward<T>(t)) {}
 
   template<size_t I, class... Args>
   get_nth_type_t<I, Ts...>& emplace(Args&& ...args) {
