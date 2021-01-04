@@ -10,10 +10,19 @@ struct variant_storage : variant_move_ctor_base<(std::is_trivially_move_construc
                          enable_move_ctor<(std::is_move_constructible_v<Types> && ...)> {
   constexpr variant_storage() noexcept = default;
   using move_ctor_base = variant_move_ctor_base<(std::is_trivially_move_constructible_v<Types> && ...), Types...>;
-  using move_ctor_base::move_ctor_base;
-
+  // using move_ctor_base::move_ctor_base;
   void swap(variant_storage& other) {
-
+    if (this->index_ == variant_npos && other.index_ == variant_npos) {
+      return;
+    }
+    if (this->index_ == other.index_) {
+      this->swap_stg(this->index_, other.storage);
+      return;
+    }
+    // TODO: else
+//    variant_storage tmp(std::move(other));
+//    other = std::move(*this);
+//    *this = std::move(tmp);
   }
 
   template<typename U, typename... Args>
@@ -44,4 +53,17 @@ struct variant_storage : variant_move_ctor_base<(std::is_trivially_move_construc
     return get_stg<I>(this->storage);
   }
   ~variant_storage() = default;
+ private:
+  template<size_t... Is>
+  void call_swap_stg(std::index_sequence<Is...>, size_t index, storage_union<Types...>& other) {
+    using dtype = void (*)(storage_union<Types...>&, storage_union<Types...>&);
+    static dtype swapper[] = {[](storage_union<Types...>& stg, storage_union<Types...>& other) {
+      stg.template swap_stg<Is>(other);
+    }...};
+    swapper[index](this->storage, other);
+  }
+
+  constexpr void swap_stg(size_t index, storage_union<Types...>& other) {
+    call_swap_stg(std::index_sequence_for<Types...>{}, index, other);
+  }
 };

@@ -18,6 +18,11 @@ struct value_holder {
     new(holder) value_holder(std::move(other));
   }
 
+  void swap(value_holder& other) {
+    using std::swap;
+    swap(obj, other.obj);
+  }
+
   constexpr operator T&() {
     return obj;
   }
@@ -57,6 +62,12 @@ struct value_holder<false, T> {
   template<typename... Args>
   explicit value_holder(in_place_index_t<0>, Args&& ... args) {
     new(&obj) T(std::forward<Args>(args)...);
+  }
+
+
+  void swap(value_holder& other) {
+    using std::swap;
+    swap(*reinterpret_cast<T*>(&obj), *reinterpret_cast<T*>(&other.obj));
   }
 
   ~value_holder() = default;
@@ -127,11 +138,20 @@ union storage_union<T, Ts...> {
   }
 
   template<size_t I>
+  constexpr void swap_stg(storage_union& other) {
+    if constexpr (I == 0) {
+      obj.swap(other.obj);
+    } else {
+      stg.template swap_stg<I - 1>(other.stg);
+    }
+  }
+
+  template<size_t I>
   constexpr void move_stg(storage_union&& other) {
     if constexpr (I == 0) {
       value_holder<std::is_trivially_destructible_v<T>, T>::construct_value_holder(&obj, std::move(other.obj));
     } else {
-      stg.template copy_stg<I - 1>(other.stg);
+      stg.template move_stg<I - 1>(std::move(other.stg));
     }
   }
 

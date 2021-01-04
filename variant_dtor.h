@@ -33,7 +33,7 @@ struct variant_dtor_base {
 template<typename... Types>
 struct variant_dtor_base<false, Types...> {
   constexpr variant_dtor_base() noexcept = default;
-  constexpr explicit variant_dtor_base(bool) noexcept : storage(false) {};
+  constexpr explicit variant_dtor_base(bool) noexcept: storage(false) {};
 
   constexpr variant_dtor_base(variant_dtor_base const& other) = default;
   constexpr variant_dtor_base(variant_dtor_base&& other) noexcept = default;
