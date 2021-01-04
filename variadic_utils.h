@@ -51,45 +51,27 @@ template<typename Target, typename... Ts>
 static constexpr size_t cnt_type_v = cnt_type<Target, Ts...>::cnt;
 
 // https://en.cppreference.com/w/cpp/types/type_identity since C++20 😢
-template<class T>
-struct type_identity {
-  using type = T;
-};
 
-template<typename... Types>
-struct find_overload_bool;
-
-template<typename T, typename... Types>
-struct find_overload_bool<T, Types...> : find_overload_bool<Types...> {
-  using find_overload_bool<Types...>::operator();
-  type_identity<T> operator()(T value) {}
-};
-
-template<typename T>
-struct find_overload_bool<T> {
-  type_identity<T> operator()(T value) {}
+template<bool is_bool, typename T>
+struct find_overload_one {
+  template<typename U = T>
+  std::enable_if_t<!std::is_same_v<std::decay_t<T>, bool> || is_bool, U> operator()(T value) {}
 };
 
 template<bool is_bool, typename... Types>
-struct find_overload_impl;
-
-template<bool is_bool, typename T, typename... Types>
-struct find_overload_impl<is_bool, T, Types...> : find_overload_impl<is_bool, Types...> {
-  using find_overload_impl<is_bool, Types...>::operator();
-
-  template<typename U = T>
-  std::enable_if_t<!std::is_same_v<std::decay_t<T>, bool> || is_bool, type_identity<U>> operator()(T value) {}
+struct find_overload_impl : find_overload_one<is_bool, Types> ... {
+  using find_overload_one<is_bool, Types>::operator()...;
 };
 
 template<bool is_bool, typename T>
 struct find_overload_impl<is_bool, T> {
   template<typename U = T>
-  std::enable_if_t<!std::is_same_v<std::decay_t<T>, bool> || is_bool, type_identity<U>> operator()(T value) {}
+  std::enable_if_t<!std::is_same_v<std::decay_t<T>, bool> || is_bool, U> operator()(T value) {}
 };
 
 template<typename U, typename... Types>
 using find_overload_t = typename std::invoke_result_t<find_overload_impl<std::is_same_v<std::decay_t<U>, bool>,
-                                                                         Types...>, U>::type;
+                                                                         Types...>, U>;
 
 template<class T>
 struct in_place_type_t {

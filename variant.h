@@ -15,7 +15,6 @@ template<typename... Ts>
 struct variant {
 
   constexpr variant() noexcept(std::is_nothrow_default_constructible_v<get_nth_type_t<0, Ts...>>) = default;
-  // TODO: noexcept
   constexpr variant(variant const&) = default;
   constexpr variant(variant&&) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) = default;
 
@@ -23,13 +22,7 @@ struct variant {
 
   void swap(variant& other) noexcept(((std::is_nothrow_move_constructible_v<Ts> &&
       std::is_nothrow_swappable_v<Ts>) && ...)) {
-    if (this->valueless_by_exception() && other.valueless_by_exception()) {
-      return;
-    }
-    if (this->index() == other.index()) {
-      using std::swap;
-      //swap(gt
-    }
+   storage.swap(other.storage);
   }
 
   template<typename U, typename... Args, std::enable_if_t<

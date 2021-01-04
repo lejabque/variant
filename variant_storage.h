@@ -10,7 +10,11 @@ struct variant_storage : variant_move_ctor_base<(std::is_trivially_move_construc
                          enable_move_ctor<(std::is_move_constructible_v<Types> && ...)> {
   constexpr variant_storage() noexcept = default;
   using move_ctor_base = variant_move_ctor_base<(std::is_trivially_move_constructible_v<Types> && ...), Types...>;
-  // using move_ctor_base::move_ctor_base;
+  using move_ctor_base::move_ctor_base;
+
+  void swap(variant_storage& other) {
+
+  }
 
   template<typename U, typename... Args>
   constexpr explicit variant_storage(in_place_type_t<U> in_place_flag, Args&& ... args)

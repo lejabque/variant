@@ -10,6 +10,14 @@ struct value_holder {
   constexpr explicit value_holder(in_place_index_t<0>, Args&& ... args)
       : obj(std::forward<Args>(args)...) {}
 
+  static constexpr void construct_value_holder(value_holder* holder, value_holder const& other) {
+    new(holder) value_holder(other);
+  }
+
+  static constexpr void construct_value_holder(value_holder* holder, value_holder&& other) {
+    new(holder) value_holder(std::move(other));
+  }
+
   constexpr operator T&() {
     return obj;
   }
@@ -32,11 +40,19 @@ struct value_holder {
 template<typename T>
 struct value_holder<false, T> {
   value_holder() noexcept(std::is_nothrow_default_constructible_v<T>) {
-    new(&obj) T();
+    new(reinterpret_cast<T*>(&obj)) T();
   }
 
   constexpr value_holder(value_holder const&) = default;
   constexpr value_holder(value_holder&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
+
+  static constexpr void construct_value_holder(value_holder* holder, value_holder const& other) {
+    new(&holder->obj) T(*reinterpret_cast<T const*>(&other.obj));
+  }
+
+  static constexpr void construct_value_holder(value_holder* holder, value_holder&& other) {
+    new(&holder->obj) T(std::move(*reinterpret_cast<T const*>(&other.obj)));
+  }
 
   template<typename... Args>
   explicit value_holder(in_place_index_t<0>, Args&& ... args) {
@@ -60,9 +76,16 @@ struct value_holder<false, T> {
   std::aligned_storage_t<sizeof(T), alignof(T)> obj;
 };
 
-template<typename T, typename... Ts>
-union storage_union {
+template<typename... Ts>
+union storage_union;
 
+template<>
+union storage_union<> {
+  bool dummy;
+};
+
+template<typename T, typename... Ts>
+union storage_union<T, Ts...> {
   constexpr explicit storage_union(bool) noexcept
       : dummy() {};
 
@@ -97,7 +120,7 @@ union storage_union {
   template<size_t I>
   void copy_stg(storage_union const& other) {
     if constexpr (I == 0) {
-      new(&obj) value_holder<std::is_trivially_destructible_v<T>, T>(other.obj);
+      value_holder<std::is_trivially_destructible_v<T>, T>::construct_value_holder(&obj, other.obj);
     } else {
       stg.template copy_stg<I - 1>(other.stg);
     }
@@ -106,9 +129,9 @@ union storage_union {
   template<size_t I>
   constexpr void move_stg(storage_union&& other) {
     if constexpr (I == 0) {
-      new(&obj) value_holder<std::is_trivially_destructible_v<T>, T>(std::move(other.obj));
+      value_holder<std::is_trivially_destructible_v<T>, T>::construct_value_holder(&obj, std::move(other.obj));
     } else {
-      stg.template move_stg<I - 1>(std::move(other.stg));
+      stg.template copy_stg<I - 1>(other.stg);
     }
   }
 
@@ -124,54 +147,6 @@ union storage_union {
 
   value_holder<std::is_trivially_destructible_v<T>, T> obj;
   storage_union<Ts...> stg;
-  bool dummy;
-};
-
-template<typename T>
-union storage_union<T> {
-  constexpr explicit storage_union(bool) noexcept
-      : dummy{false} {};
-  constexpr storage_union() noexcept
-      : obj() {};
-
-  template<typename... Args>
-  constexpr explicit storage_union(in_place_type_t<T> in_place_flag, Args&& ... args)
-      : obj(in_place_index_t<0>(), std::forward<Args>(args)...) {}
-
-  template<typename... Args>
-  constexpr explicit storage_union(in_place_index_t<0> in_place_flag, Args&& ... args)
-      : obj(in_place_flag, std::forward<Args>(args)...) {}
-
-  template<size_t I>
-  constexpr void destroy_stg() {
-    if constexpr (I == 0) {
-      reinterpret_cast<T*>(&obj.obj)->~T();
-    }
-  }
-
-  template<size_t I>
-  void copy_stg(storage_union const& other) {
-    if constexpr (I == 0) {
-      new(&obj) value_holder<std::is_trivially_destructible_v<T>, T>(other.obj);
-    }
-  }
-
-  template<size_t I>
-  void move_stg(storage_union&& other) {
-    if constexpr (I == 0) {
-      new(&obj) value_holder<std::is_trivially_destructible_v<T>, T>(std::move(other.obj));
-    }
-  }
-
-  template<size_t I, class... Args>
-  void emplace_stg(Args&& ... args) {
-    if constexpr (I == 0) {
-      new(&obj) value_holder<std::is_trivially_destructible_v<T>, T>(in_place_index_t<0>(),
-                                                                     std::forward<Args>(args)...);
-    }
-  }
-
-  value_holder<std::is_trivially_destructible_v<T>, T> obj;
   bool dummy;
 };
 
