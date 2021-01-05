@@ -1,28 +1,36 @@
 #pragma once
 #include "variant_copy_assign.h"
 
-template<bool is_trivial, typename... Types>
+template<bool is_trivial, typename... Ts>
 struct variant_move_ctor_base
-    : variant_copy_assign_base<(std::is_trivially_copy_assignable_v<Types> && ...), Types...> {
-  using copy_assign_base = variant_copy_assign_base<(std::is_trivially_copy_assignable_v<Types> && ...), Types...>;
+    : variant_copy_assign_base<(std::is_trivially_copy_assignable_v<Ts> && ...), Ts...> {
+  using copy_assign_base = variant_copy_assign_base<(std::is_trivially_copy_assignable_v<Ts> && ...), Ts...>;
   using copy_assign_base::copy_assign_base;
-  constexpr variant_move_ctor_base() noexcept = default;
+  constexpr variant_move_ctor_base() noexcept(std::is_nothrow_default_constructible_v<copy_assign_base>) = default;
   constexpr variant_move_ctor_base(variant_move_ctor_base const&) noexcept = default;
 
-  constexpr variant_move_ctor_base(variant_move_ctor_base&& other) noexcept((std::is_nothrow_move_constructible_v<Types> && ...)) = default;
+  constexpr variant_move_ctor_base& operator=(variant_move_ctor_base const&) = default;
+  constexpr variant_move_ctor_base& operator=(variant_move_ctor_base&&) noexcept(((
+      std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
+
+  constexpr variant_move_ctor_base(variant_move_ctor_base&& other) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) = default;
 
   ~variant_move_ctor_base() = default;
 };
 
-template<typename... Types>
-struct variant_move_ctor_base<false, Types...>
-    : variant_copy_assign_base<(std::is_trivially_copy_assignable_v<Types> && ...), Types...> {
-  using copy_assign_base = variant_copy_assign_base<(std::is_trivially_copy_assignable_v<Types> && ...), Types...>;
+template<typename... Ts>
+struct variant_move_ctor_base<false, Ts...>
+    : variant_copy_assign_base<(std::is_trivially_copy_assignable_v<Ts> && ...), Ts...> {
+  using copy_assign_base = variant_copy_assign_base<(std::is_trivially_copy_assignable_v<Ts> && ...), Ts...>;
   using copy_assign_base::copy_assign_base;
-  constexpr variant_move_ctor_base() noexcept = default;
+  constexpr variant_move_ctor_base() noexcept(std::is_nothrow_default_constructible_v<copy_assign_base>) = default;
   constexpr variant_move_ctor_base(variant_move_ctor_base const&) = default;
 
-  constexpr variant_move_ctor_base(variant_move_ctor_base&& other) noexcept((std::is_nothrow_move_constructible_v<Types> && ...)) {
+  constexpr variant_move_ctor_base& operator=(variant_move_ctor_base const&) = default;
+  constexpr variant_move_ctor_base& operator=(variant_move_ctor_base&&) noexcept(((
+      std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
+
+  constexpr variant_move_ctor_base(variant_move_ctor_base&& other) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) {
     this->index_ = other.index_;
     if (this->index_ != variant_npos) {
       this->move_stg(this->index_, std::move(other.storage));
@@ -30,16 +38,16 @@ struct variant_move_ctor_base<false, Types...>
   };
 
   template<size_t... Is>
-  void call_move_stg(std::index_sequence<Is...>, size_t index, storage_union<Types...>&& other) {
-    using dtype = void (*)(storage_union<Types...>&, storage_union<Types...>&&);
-    static dtype movers[] = {[](storage_union<Types...>& stg, storage_union<Types...>&& other) {
+  void call_move_stg(std::index_sequence<Is...>, size_t index, storage_union<Ts...>&& other) {
+    using dtype = void (*)(storage_union<Ts...>&, storage_union<Ts...>&&);
+    static dtype movers[] = {[](storage_union<Ts...>& stg, storage_union<Ts...>&& other) {
       stg.template move_stg<Is>(std::move(other));
     }...};
     movers[index](this->storage, std::move(other));
   }
 
-  constexpr void move_stg(size_t index, storage_union<Types...>&& other) {
-    call_move_stg(std::index_sequence_for<Types...>{}, index, std::move(other));
+  constexpr void move_stg(size_t index, storage_union<Ts...>&& other) {
+    call_move_stg(std::index_sequence_for<Ts...>{}, index, std::move(other));
   }
 
   ~variant_move_ctor_base() = default;

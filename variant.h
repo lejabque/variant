@@ -19,10 +19,12 @@ struct variant {
   constexpr variant(variant&&) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) = default;
 
   constexpr variant& operator=(variant const&) = default;
+  constexpr variant& operator=(variant&&) noexcept(((std::is_nothrow_move_constructible_v<Ts>
+      && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
 
   void swap(variant& other) noexcept(((std::is_nothrow_move_constructible_v<Ts> &&
       std::is_nothrow_swappable_v<Ts>) && ...)) {
-   storage.swap(other.storage);
+    storage.swap(other.storage);
   }
 
   template<typename U, typename... Args, std::enable_if_t<

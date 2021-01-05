@@ -1,30 +1,32 @@
 #pragma once
 #include "variant_copy_ctor.h"
 
-template<bool is_trivial, typename... Types>
+template<bool is_trivial, typename... Ts>
 struct variant_copy_assign_base
-    : variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Types>&& ...), Types...> {
-  using copy_ctor_base = variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Types>&& ...),
-                                                Types...>;
+    : variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Ts>&& ...), Ts...> {
+  using copy_ctor_base = variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Ts>&& ...),
+                                                Ts...>;
   using copy_ctor_base::copy_ctor_base;
-  constexpr variant_copy_assign_base() noexcept = default;
+  constexpr variant_copy_assign_base() noexcept(std::is_nothrow_default_constructible_v<copy_ctor_base>) = default;
   constexpr variant_copy_assign_base(variant_copy_assign_base const&) = default;
-  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base const&) = default;
-
   constexpr variant_copy_assign_base(variant_copy_assign_base&& other) noexcept = default;
+
+  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base const&) = default;
+  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) noexcept(((
+      std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
 
   ~variant_copy_assign_base() = default;
 };
 
-template<typename... Types>
-struct variant_copy_assign_base<false, Types...>
-    : variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Types>&& ...), Types...> {
-  using copy_ctor_base = variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Types>&& ...),
-                                                Types...>;
+template<typename... Ts>
+struct variant_copy_assign_base<false, Ts...>
+    : variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Ts>&& ...), Ts...> {
+  using copy_ctor_base = variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Ts>&& ...),
+                                                Ts...>;
   using copy_ctor_base::copy_ctor_base;
-  constexpr variant_copy_assign_base() noexcept = default;
+  constexpr variant_copy_assign_base() noexcept(std::is_nothrow_default_constructible_v<copy_ctor_base>) = default;
   constexpr variant_copy_assign_base(variant_copy_assign_base const&) = default;
-  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base const& rhs) noexcept {
+  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base const& rhs) {
     if (this->index_ == variant_npos && rhs.index_ == variant_npos) {
       // If both *this and rhs are valueless by exception, does nothing
       return *this;
@@ -66,6 +68,8 @@ struct variant_copy_assign_base<false, Types...>
 //      }
 //    }
   };
+  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) noexcept(((
+      std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
 
   constexpr variant_copy_assign_base(variant_copy_assign_base&& other) noexcept = default;
 

@@ -5,6 +5,10 @@ struct value_holder {
   constexpr value_holder() noexcept(std::is_nothrow_default_constructible_v<T>) = default;
   constexpr value_holder(value_holder const&) = default;
   constexpr value_holder(value_holder&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
+
+  constexpr value_holder& operator=(value_holder const&) = default;
+  constexpr value_holder& operator=(value_holder&&) noexcept((
+      std::is_nothrow_move_constructible_v<T> && std::is_nothrow_move_assignable_v<T>)) = default;
 // TODO: noexcept of move
   template<typename... Args>
   constexpr explicit value_holder(in_place_index_t<0>, Args&& ... args)
@@ -50,6 +54,9 @@ struct value_holder<false, T> {
 
   constexpr value_holder(value_holder const&) = default;
   constexpr value_holder(value_holder&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
+  constexpr value_holder& operator=(value_holder const&) = default;
+  constexpr value_holder& operator=(value_holder&&) noexcept((
+      std::is_nothrow_move_constructible_v<T> && std::is_nothrow_move_assignable_v<T>)) = default;
 
   static constexpr void construct_value_holder(value_holder* holder, value_holder const& other) {
     new(&holder->obj) T(*reinterpret_cast<T const*>(&other.obj));
@@ -63,7 +70,6 @@ struct value_holder<false, T> {
   explicit value_holder(in_place_index_t<0>, Args&& ... args) {
     new(&obj) T(std::forward<Args>(args)...);
   }
-
 
   void swap(value_holder& other) {
     using std::swap;
@@ -100,7 +106,8 @@ union storage_union<T, Ts...> {
   constexpr explicit storage_union(bool) noexcept
       : dummy() {};
 
-  constexpr storage_union() noexcept
+  constexpr storage_union()
+  noexcept(std::is_nothrow_default_constructible_v<value_holder<std::is_trivially_destructible_v<T>, T>>)
       : obj() {};
 
   template<typename U, typename... Args>
