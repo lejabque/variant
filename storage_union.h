@@ -22,11 +22,6 @@ struct value_holder {
     new(holder) value_holder(std::move(other));
   }
 
-  template<typename R, typename Visitor>
-  constexpr R apply_func(Visitor&& vis) {
-    return vis(obj);
-  }
-
   void swap(value_holder& other) {
     using std::swap;
     swap(obj, other.obj);
@@ -93,11 +88,6 @@ struct value_holder<false, T> {
 
   operator T const&() const {
     return *reinterpret_cast<T const*>(&obj);
-  }
-
-  template<typename R, typename Visitor>
-  constexpr R apply_func(Visitor&& vis) {
-    return vis(*reinterpret_cast<T*>(&obj));
   }
 
   std::aligned_storage_t<sizeof(T), alignof(T)> obj;
@@ -169,15 +159,6 @@ union storage_union<T, Ts...> {
       value_holder<std::is_trivially_destructible_v<T>, T>::construct_value_holder(&obj, std::move(other.obj));
     } else {
       stg.template move_stg<I - 1>(std::move(other.stg));
-    }
-  }
-
-  template<typename R, size_t I, typename Visitor>
-  constexpr R apply_func(Visitor&& vis) {
-    if constexpr (I == 0) {
-      return obj.template apply_func<R>(std::forward<Visitor>(vis));
-    } else {
-      return stg.template apply_func<R, I - 1>(std::forward<Visitor>(vis));
     }
   }
 
