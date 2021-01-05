@@ -4,11 +4,17 @@
 #include "variant_move_assign.h"
 
 template<typename... Ts>
-struct variant_storage : variant_move_assign_base<(std::is_trivially_move_assignable_v<Ts> && ...), Ts...>,
+struct variant_storage : variant_move_assign_base<((std::is_trivially_move_constructible_v<Ts>
+    && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>) && ...), Ts...>,
                          enable_default_ctor<std::is_default_constructible_v<get_nth_type_t<0, Ts...>>>,
                          enable_copy_ctor<(std::is_copy_constructible_v<Ts> && ...)>,
-                         enable_move_ctor<(std::is_move_constructible_v<Ts> && ...)> {
-  using move_assign_base = variant_move_assign_base<(std::is_trivially_move_assignable_v<Ts> && ...), Ts...>;
+                         enable_move_ctor<(std::is_move_constructible_v<Ts> && ...)>,
+                         enable_copy_assign<((std::is_copy_constructible_v<Ts>
+                             && std::is_copy_assignable_v<Ts>) && ...)>,
+                         enable_move_assign<((std::is_move_constructible_v<Ts>
+                             && std::is_move_assignable_v<Ts>) && ...)> {
+  using move_assign_base = variant_move_assign_base<((std::is_trivially_move_constructible_v<Ts>
+      && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>) && ...), Ts...>;
   constexpr variant_storage() noexcept(std::is_nothrow_default_constructible_v<move_assign_base>) = default;
   // using move_ctor_base::move_ctor_base;
   void swap(variant_storage& other) {

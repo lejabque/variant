@@ -39,4 +39,29 @@ struct enable_move_ctor<false> {
   constexpr enable_move_ctor& operator=(enable_move_ctor&&) noexcept = default;
 };
 
+template<bool has_copy_assign = true>
+struct enable_copy_assign {};
+
+template<>
+struct enable_copy_assign<false> {
+  constexpr enable_copy_assign() noexcept = default;
+  constexpr enable_copy_assign(enable_copy_assign const&) noexcept = default;
+  constexpr enable_copy_assign(enable_copy_assign&&) noexcept = default;
+
+  constexpr enable_copy_assign& operator=(enable_copy_assign const&) noexcept = delete;
+  constexpr enable_copy_assign& operator=(enable_copy_assign&&) noexcept = default;
+};
+
+template<bool has_move_assign = true>
+struct enable_move_assign {};
+
+template<>
+struct enable_move_assign<false> {
+  constexpr enable_move_assign() noexcept = default;
+  constexpr enable_move_assign(enable_move_assign const&) noexcept = default;
+  constexpr enable_move_assign(enable_move_assign&&) noexcept = default;
+
+  constexpr enable_move_assign& operator=(enable_move_assign const&) noexcept = default;
+  constexpr enable_move_assign& operator=(enable_move_assign&&) noexcept = delete;
+};
 
