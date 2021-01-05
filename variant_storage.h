@@ -75,4 +75,5 @@ struct variant_storage : variant_move_assign_base<((std::is_trivially_move_const
   constexpr void swap_stg(size_t index, storage_union<Ts...>& other) {
     call_swap_stg(std::index_sequence_for<Ts...>{}, index, other);
   }
+
 };

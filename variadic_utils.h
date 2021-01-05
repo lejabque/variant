@@ -52,15 +52,15 @@ static constexpr size_t cnt_type_v = cnt_type<Target, Ts...>::cnt;
 
 // https://en.cppreference.com/w/cpp/types/type_identity since C++20 😢
 
-template<bool is_bool, typename T>
-struct find_overload_one {
+template<bool is_bool, typename... Ts>
+struct find_overload_impl;
+
+template<bool is_bool, typename T, typename... Ts>
+struct find_overload_impl<is_bool, T, Ts...> : find_overload_impl<is_bool, Ts...> {
+  using find_overload_impl<is_bool, Ts...>::operator();
+
   template<typename U = T>
   std::enable_if_t<!std::is_same_v<std::decay_t<T>, bool> || is_bool, U> operator()(T value) {}
-};
-
-template<bool is_bool, typename... Types>
-struct find_overload_impl : find_overload_one<is_bool, Types> ... {
-  using find_overload_one<is_bool, Types>::operator()...;
 };
 
 template<bool is_bool, typename T>

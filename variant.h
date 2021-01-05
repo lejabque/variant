@@ -98,7 +98,7 @@ struct variant {
   friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, bool>
   holds_alternative(variant<Types...> const& v);
 
- private:
+  // TODO: private:
   variant_storage<Ts...> storage;
 };
 
@@ -203,3 +203,47 @@ struct variant_alternative<I, const variant<Ts...>> {
 
 template<size_t I, class T>
 using variant_alternative_t = typename variant_alternative<I, T>::type;
+
+//template <class Visitor, class... Variants>
+//constexpr decltype(auto) visit( Visitor&& vis, Variants&&... vars ) {
+//  using dtype = void (*)(storage_union<Ts...>&, storage_union<Ts...>&&);
+//  static dtype movers[] = {[](storage_union<Ts...>& stg, storage_union<Ts...>&& other) {
+//    stg.template move_stg<Is>(std::move(other));
+//  }...};
+//  std::invoke(std::forward<Visitor>(vis), std::get<is>(std::forward<Variants>(vars))...);
+//}
+
+template<typename R, typename Visitor, size_t... Is, typename Variant>
+R call_visit(std::index_sequence<Is...>, size_t index, Visitor&& vis, Variant&& var) {
+  using dtype = R (*)(Visitor&& vis, Variant&& var);
+  static dtype visiters[] = {[](Visitor&& vis, Variant&& var) {
+    //  stg.template move_stg<Is>(std::move(other));
+    return var.storage.storage.template apply_func<R, Is>(std::forward<Visitor>(vis));
+  }...};
+  return visiters[index](std::forward<Visitor>(vis), std::forward<Variant>(var));
+}
+
+template<class T>
+struct variant_indexes;
+
+template<typename... Ts>
+struct variant_indexes<variant<Ts...>> {
+  using type = std::index_sequence_for<Ts...>;
+};
+
+template<typename... Ts>
+struct variant_indexes<const variant<Ts...>> {
+  using type = std::index_sequence_for<Ts...>;
+};
+
+template<class T>
+using variant_indexes_t = typename variant_indexes<T>::type;
+
+template<typename Visitor, typename Variant>
+constexpr decltype(auto) visit(Visitor&& vis, Variant&& var) {
+  if (var.valueless_by_exception()) {
+    throw bad_variant_access();
+  }
+  return call_visit<std::invoke_result_t<Visitor, variant_alternative_t<0, std::decay_t<Variant>>>>(variant_indexes_t<
+      std::decay_t<Variant>>{}, var.index(), std::forward<Visitor>(vis), std::forward<Variant>(var));
+}
