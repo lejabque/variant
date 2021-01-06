@@ -204,24 +204,6 @@ struct variant_alternative<I, const variant<Ts...>> {
 template<size_t I, class T>
 using variant_alternative_t = typename variant_alternative<I, T>::type;
 
-//template<typename R, typename Visitor, size_t... Is, typename... Variant>
-//R call_visit(std::index_sequence<Is...>, Visitor&& vis, Variant&&... vars) {
-//  using dtype = R (*)(Visitor&& vis, Variant&&... vars);
-//  static dtype visiters[] = {[](Visitor&& vis, Variant&&... vars) {
-//    return vis(get<Is>(std::forward<Variant>(vars))...);
-//  }};
-//  return visiters[vars.index](std::forward<Visitor>(vis), std::forward<Variant>(vars)...);
-//}
-
-template<typename R, typename Visitor, size_t... Is, typename Variant>
-R call_visit(std::index_sequence<Is...>, size_t index, Visitor&& vis, Variant&& var) {
-  using dtype = R (*)(Visitor&& vis, Variant&& var);
-  static dtype visiters[] = {[](Visitor&& vis, Variant&& var) {
-    return vis(get<Is>(std::forward<Variant>(var)));
-  }...};
-  return visiters[index](std::forward<Visitor>(vis), std::forward<Variant>(var));
-}
-
 template<class T>
 struct variant_indexes;
 
@@ -237,25 +219,6 @@ struct variant_indexes<const variant<Ts...>> {
 
 template<class T>
 using variant_indexes_t = typename variant_indexes<T>::type;
-
-//template<typename Visitor, class Variant>
-//constexpr decltype(auto) visit(Visitor&& vis, Variant&& var) {
-//  if (var.valueless_by_exception()) {
-//    throw bad_variant_access();
-//  }
-//  return call_visit<std::invoke_result_t<Visitor, variant_alternative_t<0, std::decay_t<Variant>>>>(variant_indexes_t<
-//      std::decay_t<Variant>>{}, var.index(), std::forward<Visitor>(vis), std::forward<Variant>(var));
-//}
-
-//template<typename R, typename Visitor, size_t... Is, typename... Variant>
-//constexpr R call_visit(std::index_sequence<Is...>, Visitor&& vis, Variant&& ... vars) {
-//  return vis(get<Is>(std::forward<Variant>(vars))...);
-//}
-// TODO: сделать массив func[v1.index()][v2.index()][v3.Index()] будет выдавать функцию
-// Рекурсивно:
-// параметры: visitor, посчитанные индексы выше, Variants, индекс текущего варианта, его индексы
-
-
 
 template<typename Visitor, typename... Variants>
 struct table_impl_last {
@@ -311,8 +274,7 @@ constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
   }
   return get_from_table(table_impl<sizeof...(Variants) == 1,
                                    std::invoke_result_t<Visitor, variant_alternative_t<0, std::decay_t<Variants>>...>,
-                                   Visitor,
-                                   0,
+                                   Visitor, 0,
                                    Variants...>::make_table(std::index_sequence<>{},
                                                             variant_indexes_t<std::decay_t<get_nth_type_t<0,
                                                                                                           Variants...>>>{}),

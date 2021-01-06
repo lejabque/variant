@@ -1,15 +1,13 @@
 #pragma once
-#include "variant_copy_assign.h"
+#include "variant_dtor.h"
 
 template<bool is_trivial, typename... Ts>
 struct variant_move_ctor_base
-    : variant_copy_assign_base<((std::is_trivially_copy_constructible_v<Ts>
-        && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>)&& ...), Ts...> {
-  using copy_assign_base = variant_copy_assign_base<((std::is_trivially_copy_constructible_v<Ts>
-      && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>)&& ...), Ts...>;
-  using copy_assign_base::copy_assign_base;
-  constexpr variant_move_ctor_base() noexcept(std::is_nothrow_default_constructible_v<copy_assign_base>) = default;
-  constexpr variant_move_ctor_base(variant_move_ctor_base const&) noexcept = default;
+    : variant_dtor_base<(std::is_trivially_destructible_v<Ts>&& ...), Ts...> {
+  using base = variant_dtor_base<(std::is_trivially_destructible_v<Ts>&& ...), Ts...>;
+  using base::base;
+  constexpr variant_move_ctor_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
+  constexpr variant_move_ctor_base(variant_move_ctor_base const&) = default;
 
   constexpr variant_move_ctor_base& operator=(variant_move_ctor_base const&) = default;
   constexpr variant_move_ctor_base& operator=(variant_move_ctor_base&&) noexcept(((
@@ -22,12 +20,10 @@ struct variant_move_ctor_base
 
 template<typename... Ts>
 struct variant_move_ctor_base<false, Ts...>
-    : variant_copy_assign_base<((std::is_trivially_copy_constructible_v<Ts>
-        && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>)&& ...), Ts...> {
-  using copy_assign_base = variant_copy_assign_base<((std::is_trivially_copy_constructible_v<Ts>
-      && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>)&& ...), Ts...>;
-  using copy_assign_base::copy_assign_base;
-  constexpr variant_move_ctor_base() noexcept(std::is_nothrow_default_constructible_v<copy_assign_base>) = default;
+    : variant_dtor_base<(std::is_trivially_destructible_v<Ts>&& ...), Ts...> {
+  using base = variant_dtor_base<(std::is_trivially_destructible_v<Ts>&& ...), Ts...>;
+  using base::base;
+  constexpr variant_move_ctor_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_move_ctor_base(variant_move_ctor_base const&) = default;
 
   constexpr variant_move_ctor_base& operator=(variant_move_ctor_base const&) = default;

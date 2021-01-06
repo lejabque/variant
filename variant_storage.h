@@ -1,11 +1,11 @@
 #pragma once
 #include "enable_ctor_base.h"
 #include "variadic_utils.h"
-#include "variant_move_assign.h"
+#include "variant_copy_assign.h"
 
 template<typename... Ts>
-struct variant_storage : variant_move_assign_base<((std::is_trivially_move_constructible_v<Ts>
-    && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>) && ...), Ts...>,
+struct variant_storage : variant_copy_assign_base<((std::is_trivially_copy_constructible_v<Ts>
+    && std::is_trivially_copy_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>)&& ...), Ts...>,
                          enable_default_ctor<std::is_default_constructible_v<get_nth_type_t<0, Ts...>>>,
                          enable_copy_ctor<(std::is_copy_constructible_v<Ts> && ...)>,
                          enable_move_ctor<(std::is_move_constructible_v<Ts> && ...)>,
@@ -13,11 +13,12 @@ struct variant_storage : variant_move_assign_base<((std::is_trivially_move_const
                              && std::is_copy_assignable_v<Ts>) && ...)>,
                          enable_move_assign<((std::is_move_constructible_v<Ts>
                              && std::is_move_assignable_v<Ts>) && ...)> {
-  using move_assign_base = variant_move_assign_base<((std::is_trivially_move_constructible_v<Ts>
-      && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>) && ...), Ts...>;
-  constexpr variant_storage() noexcept(std::is_nothrow_default_constructible_v<move_assign_base>) = default;
+  using base = variant_copy_assign_base<((std::is_trivially_copy_constructible_v<Ts>
+      && std::is_trivially_copy_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>)&& ...), Ts...>;
+  constexpr variant_storage() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   // using move_ctor_base::move_ctor_base;
-  void swap(variant_storage& other) {
+  void swap(variant_storage& other) noexcept(((std::is_nothrow_move_constructible_v<Ts> &&
+      std::is_nothrow_swappable_v<Ts>) && ...)) {
     if (this->index_ == variant_npos && other.index_ == variant_npos) {
       return;
     }
@@ -33,12 +34,12 @@ struct variant_storage : variant_move_assign_base<((std::is_trivially_move_const
 
   template<typename U, typename... Args>
   constexpr explicit variant_storage(in_place_type_t<U> in_place_flag, Args&& ... args)
-      : move_assign_base(in_place_flag, std::forward<Args>(args)...),
+      : base(in_place_flag, std::forward<Args>(args)...),
         enable_default_ctor<std::is_default_constructible_v<get_nth_type_t<0, Ts...>>>{} {}
 
   template<size_t I, typename... Args>
   constexpr explicit variant_storage(in_place_index_t<I> in_place_flag, Args&& ... args)
-      : move_assign_base(in_place_flag, std::forward<Args>(args)...),
+      : base(in_place_flag, std::forward<Args>(args)...),
         enable_default_ctor<std::is_default_constructible_v<get_nth_type_t<0, Ts...>>>{} {}
 
   constexpr variant_storage(variant_storage const&) = default;
@@ -75,5 +76,18 @@ struct variant_storage : variant_move_assign_base<((std::is_trivially_move_const
   constexpr void swap_stg(size_t index, storage_union<Ts...>& other) {
     call_swap_stg(std::index_sequence_for<Ts...>{}, index, other);
   }
-
 };
+
+//
+//template<typename Visitor, typename... Storages>
+//constexpr void visit_stg(Visitor&& vis, Storages&& ... stgs) {
+//  return get_stg_from_table(stg_table_impl<sizeof...(Storages) == 1,
+//                                           void,
+//                                           Visitor, 0,
+//                                           Storages...>::make_stg_table(std::index_sequence<>{},
+//                                                                        storage_indexes_t<std::decay_t<get_nth_type_t<0,
+//                                                                                                                      Storages...>>
+//                                                                        >{}),
+//                            std::forward<Storages>(stgs)...)(std::forward<Visitor>(vis),
+//                                                             std::forward<Storages>(stgs)...);
+//}

@@ -2,6 +2,7 @@
 
 template<bool is_trivial_dtor, typename T>
 struct value_holder {
+  using Type = T;
   constexpr value_holder() noexcept(std::is_nothrow_default_constructible_v<T>) = default;
   constexpr value_holder(value_holder const&) = default;
   constexpr value_holder(value_holder&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
@@ -48,6 +49,7 @@ struct value_holder {
 // TODO: доделать конструкторы
 template<typename T>
 struct value_holder<false, T> {
+  using Type = T;
   value_holder() noexcept(std::is_nothrow_default_constructible_v<T>) {
     new(reinterpret_cast<T*>(&obj)) T();
   }
@@ -178,6 +180,15 @@ union storage_union<T, Ts...> {
 };
 
 template<size_t ind, typename T, typename... Ts>
+auto&& get_stg_stg(storage_union<T, Ts...>&& storage) {
+  if constexpr (ind == 0) {
+    return storage;
+  } else {
+    return get_stg_stg<ind - 1, Ts...>(storage.stg);
+  }
+}
+
+template<size_t ind, typename T, typename... Ts>
 auto& get_stg_stg(storage_union<T, Ts...>& storage) {
   if constexpr (ind == 0) {
     return storage;
@@ -213,3 +224,64 @@ template<typename Target, typename... Ts>
 constexpr Target& get_stg(storage_union<Ts...>& storage) {
   return const_cast<Target&>(get_stg<Target, Ts...>(std::as_const(storage)));
 }
+
+template<class T>
+struct storage_indexes;
+
+template<typename... Ts>
+struct storage_indexes<storage_union<Ts...>> {
+  using type = std::index_sequence_for<Ts...>;
+};
+
+template<typename... Ts>
+struct storage_indexes<const storage_union<Ts...>> {
+  using type = std::index_sequence_for<Ts...>;
+};
+
+template<class T>
+using storage_indexes_t = typename storage_indexes<T>::type;
+
+
+template<size_t Index>
+struct value_holder_index {
+  static constexpr size_t value = Index;
+};
+
+template<typename Visitor, typename... Storages>
+struct stg_table_impl_last {
+  template<size_t... Is>
+  static constexpr auto get_func(std::index_sequence<Is...>) {
+    return [](Visitor&& vis, Storages&& ... stgs) {
+      return vis(get_stg_stg<Is>(std::forward<Storages>(stgs)).obj..., value_holder_index<Is>{}...);
+    };
+  }
+};
+
+template<bool is_last, typename R, typename Visitor, size_t Current, typename... Storages>
+struct stg_table_impl {
+  template<size_t... Prefix, size_t... StorageIndexes>
+  static auto make_stg_table(std::index_sequence<Prefix...>, std::index_sequence<StorageIndexes...>) {
+    return std::array{
+        stg_table_impl<Current + 2 == sizeof...(Storages),
+                       R,
+                       Visitor,
+                       Current + 1,
+                       Storages...>::make_stg_table(std::index_sequence<Prefix..., StorageIndexes>{},
+                                                    storage_indexes_t<std::decay_t<get_nth_type_t<
+                                                        Current + 1,
+                                                        Storages...>>>{})...};
+  }
+};
+
+template<typename R, typename Visitor, size_t Current, typename... Storages>
+struct stg_table_impl<true, R, Visitor, Current, Storages...> {
+  template<size_t... Prefix, size_t... StorageIndexes>
+  static constexpr auto make_stg_table(std::index_sequence<Prefix...>, std::index_sequence<StorageIndexes...>) {
+    using dtype = R (*)(Visitor&& vis, Storages&& ... stgs);
+    return std::array<dtype, sizeof...(StorageIndexes)>{
+        stg_table_impl_last<Visitor, Storages...>::get_func(std::index_sequence<Prefix..., StorageIndexes>{})...
+    }; // TODO: закешировать в static
+  }
+};
+
+// TODO: visitor, который передает value_holder + compile-time?? index

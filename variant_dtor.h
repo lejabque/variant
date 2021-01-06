@@ -26,6 +26,9 @@ struct variant_dtor_base {
       : storage(in_place_flag, std::forward<Args>(args)...),
         index_(I) {}
 
+  constexpr size_t index() const noexcept {
+    return index_;
+  }
   ~variant_dtor_base() = default;
 
   constexpr void destroy_stg(size_t index) {}
@@ -63,6 +66,10 @@ struct variant_dtor_base<false, Ts...> {
     }
   }
 
+  constexpr size_t index() const noexcept {
+    return index_;
+  }
+
   template<size_t... Is>
   void call_destroy_stg(std::index_sequence<Is...>, size_t index) {
     using dtype = void (*)(storage_union<Ts...>&);
@@ -78,3 +85,65 @@ struct variant_dtor_base<false, Ts...> {
   storage_union<Ts...> storage;
   size_t index_ = 0;
 };
+
+template<size_t I, class T>
+struct variant_stg_alternative;
+
+template<size_t I, bool flag, template<bool, typename> typename base, typename... Ts>
+struct variant_stg_alternative<I, base<flag, Ts...>> {
+  using type = get_nth_type_t<I, Ts...>;
+};
+
+template<size_t I, bool flag, template<bool, typename> typename base, typename... Ts>
+struct variant_stg_alternative<I, const base<flag, Ts...>> {
+  using type = const get_nth_type_t<I, Ts...>;
+};
+
+template<size_t I, class T>
+using variant_stg_alternative_t = typename variant_stg_alternative<I, T>::type;
+
+
+template<class T>
+struct variant_stg_indexes;
+
+template<bool flag, template<bool, typename> typename base, typename... Ts>
+struct variant_stg_indexes<base<flag, Ts...>> {
+  using type = std::index_sequence_for<Ts...>;
+};
+
+template<bool flag, template<bool, typename> typename base, typename... Ts>
+struct variant_stg_indexes<const base<flag, Ts...>> {
+  using type = std::index_sequence_for<Ts...>;
+};
+
+template<class T>
+using variant_stg_indexes_t = typename variant_stg_indexes<T>::type;
+
+template<typename Table>
+constexpr auto get_stg_from_table(Table&& table) {
+  return table;
+}
+
+template<typename Table, typename VariantStg, typename... VariantStgs>
+constexpr auto get_stg_from_table(Table&& table, VariantStg&& stg, VariantStgs&& ... stgs) {
+  return get_stg_from_table(table[stg.index()], std::forward<VariantStgs>(stgs)...);
+}
+
+/*
+  std::invoke_result_t<Visitor,
+                                                                variant_stg_alternative_t<0,
+                                                                                          std::decay_t<VariantStorages>>...>
+ */
+template<typename Visitor, typename... VariantStorages>
+constexpr void visit_stg(Visitor&& vis, VariantStorages&& ... variant_stgs) {
+  get_stg_from_table(stg_table_impl<sizeof...(VariantStorages) == 1,
+                                    void,
+                                    Visitor, 0,
+                                    decltype(variant_stgs.storage)...>::make_stg_table(std::index_sequence<>{},
+                                                                                       variant_stg_indexes_t<std::decay_t<
+                                                                                           get_nth_type_t<0,
+                                                                                                          VariantStorages...>>
+                                                                                       >{}),
+                     variant_stgs...)(std::forward<Visitor>(vis),
+                                      std::move(variant_stgs.storage)...);
+}
