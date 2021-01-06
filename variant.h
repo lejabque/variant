@@ -204,6 +204,15 @@ struct variant_alternative<I, const variant<Ts...>> {
 template<size_t I, class T>
 using variant_alternative_t = typename variant_alternative<I, T>::type;
 
+//template<typename R, typename Visitor, size_t... Is, typename... Variant>
+//R call_visit(std::index_sequence<Is...>, Visitor&& vis, Variant&&... vars) {
+//  using dtype = R (*)(Visitor&& vis, Variant&&... vars);
+//  static dtype visiters[] = {[](Visitor&& vis, Variant&&... vars) {
+//    return vis(get<Is>(std::forward<Variant>(vars))...);
+//  }};
+//  return visiters[vars.index](std::forward<Visitor>(vis), std::forward<Variant>(vars)...);
+//}
+
 template<typename R, typename Visitor, size_t... Is, typename Variant>
 R call_visit(std::index_sequence<Is...>, size_t index, Visitor&& vis, Variant&& var) {
   using dtype = R (*)(Visitor&& vis, Variant&& var);
@@ -229,11 +238,85 @@ struct variant_indexes<const variant<Ts...>> {
 template<class T>
 using variant_indexes_t = typename variant_indexes<T>::type;
 
-template<typename Visitor, class Variant>
-constexpr decltype(auto) visit(Visitor&& vis, Variant&& var) {
-  if (var.valueless_by_exception()) {
+//template<typename Visitor, class Variant>
+//constexpr decltype(auto) visit(Visitor&& vis, Variant&& var) {
+//  if (var.valueless_by_exception()) {
+//    throw bad_variant_access();
+//  }
+//  return call_visit<std::invoke_result_t<Visitor, variant_alternative_t<0, std::decay_t<Variant>>>>(variant_indexes_t<
+//      std::decay_t<Variant>>{}, var.index(), std::forward<Visitor>(vis), std::forward<Variant>(var));
+//}
+
+//template<typename R, typename Visitor, size_t... Is, typename... Variant>
+//constexpr R call_visit(std::index_sequence<Is...>, Visitor&& vis, Variant&& ... vars) {
+//  return vis(get<Is>(std::forward<Variant>(vars))...);
+//}
+// TODO: сделать массив func[v1.index()][v2.index()][v3.Index()] будет выдавать функцию
+// Рекурсивно:
+// параметры: visitor, посчитанные индексы выше, Variants, индекс текущего варианта, его индексы
+
+
+
+template<typename Visitor, typename... Variants>
+struct table_impl_last {
+  template<size_t... Is>
+  static constexpr auto get_func(std::index_sequence<Is...>) {
+    return [](Visitor&& vis, Variants&& ... vars) {
+      return vis(get<Is>(std::forward<Variants>(vars))...);
+    };
+  }
+};
+
+template<bool is_last, typename R, typename Visitor, size_t Current, typename... Variants>
+struct table_impl {
+  template<size_t... Prefix, size_t... VariantIndexes>
+  static auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
+    return std::array{
+        table_impl<Current + 2 == sizeof...(Variants),
+                   R,
+                   Visitor,
+                   Current + 1,
+                   Variants...>::make_table(std::index_sequence<Prefix..., VariantIndexes>{},
+                                            variant_indexes_t<std::decay_t<get_nth_type_t<
+                                                Current + 1,
+                                                Variants...>>>{})...};
+  }
+};
+
+template<typename R, typename Visitor, size_t Current, typename... Variants>
+struct table_impl<true, R, Visitor, Current, Variants...> {
+  template<size_t... Prefix, size_t... VariantIndexes>
+  static constexpr auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
+    using dtype = R (*)(Visitor&& vis, Variants&& ... vars);
+    return std::array<dtype, sizeof...(VariantIndexes)>{
+        table_impl_last<Visitor, Variants...>::get_func(std::index_sequence<Prefix..., VariantIndexes>{})...
+    }; // TODO: закешировать в static
+  }
+};
+
+template<typename Table>
+constexpr auto get_from_table(Table&& table) {
+  return table;
+}
+
+template<typename Table, typename Variant, typename...Variants>
+constexpr auto get_from_table(Table&& table, Variant&& var, Variants&& ... vars) {
+  return get_from_table(table[var.index()], std::forward<Variants>(vars)...);
+}
+
+template<typename Visitor, typename... Variants>
+constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
+  if ((vars.valueless_by_exception() || ...)) {
     throw bad_variant_access();
   }
-  return call_visit<std::invoke_result_t<Visitor, variant_alternative_t<0, std::decay_t<Variant>>>>(variant_indexes_t<
-      std::decay_t<Variant>>{}, var.index(), std::forward<Visitor>(vis), std::forward<Variant>(var));
+  return get_from_table(table_impl<sizeof...(Variants) == 1,
+                                   std::invoke_result_t<Visitor, variant_alternative_t<0, std::decay_t<Variants>>...>,
+                                   Visitor,
+                                   0,
+                                   Variants...>::make_table(std::index_sequence<>{},
+                                                            variant_indexes_t<std::decay_t<get_nth_type_t<0,
+                                                                                                          Variants...>>>{}),
+                        std::forward<Variants>(vars)...)(std::forward<Visitor>(vis),
+                                                         std::forward<Variants>(vars)...);
 }
+
