@@ -1,5 +1,5 @@
 #pragma once
-
+#include <experimental/array>
 #include "storage_union.h"
 
 inline constexpr size_t variant_npos = -1;
@@ -133,7 +133,7 @@ template<typename Visitor, typename... Variants>
 struct stg_table_impl_last {
   template<size_t... Is>
   static constexpr auto get_func(std::index_sequence<Is...>) {
-    return [](Visitor&& vis, Variants... vars) {
+    return +[](Visitor&& vis, Variants... vars) {
       return vis(value_holder_index<Is>{}...);
     };
   }
@@ -143,7 +143,7 @@ template<bool is_last, typename R, typename Visitor, size_t Current, typename...
 struct stg_table_impl {
   template<size_t... Prefix, size_t... VariantIndexes>
   static auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
-    return std::array{
+    return std::experimental::make_array(
         stg_table_impl<Current + 2 == sizeof...(Variants),
                        R,
                        Visitor,
@@ -151,7 +151,7 @@ struct stg_table_impl {
                        Variants...>::make_table(std::index_sequence<Prefix..., VariantIndexes>{},
                                                 variant_stg_indexes_t<std::decay_t<get_nth_type_t<
                                                     Current + 1,
-                                                    Variants...>>>{})...};
+                                                    Variants...>>>{})...);
   }
 };
 
@@ -159,10 +159,9 @@ template<typename R, typename Visitor, size_t Current, typename... Variants>
 struct stg_table_impl<true, R, Visitor, Current, Variants...> {
   template<size_t... Prefix, size_t... VariantIndexes>
   static constexpr auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
-    using dtype = R (*)(Visitor&& vis, Variants... vars);
-    return std::array<dtype, sizeof...(VariantIndexes)>{
+    return std::experimental::make_array(
         stg_table_impl_last<Visitor, Variants...>::get_func(std::index_sequence<Prefix..., VariantIndexes>{})...
-    }; // TODO: закешировать в static
+    ); // TODO: закешировать в static
   }
 };
 

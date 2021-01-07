@@ -234,7 +234,7 @@ template<bool is_last, typename R, typename Visitor, size_t Current, typename...
 struct table_impl {
   template<size_t... Prefix, size_t... VariantIndexes>
   static auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
-    return std::array{
+    return std::experimental::make_array(
         table_impl<Current + 2 == sizeof...(Variants),
                    R,
                    Visitor,
@@ -242,7 +242,8 @@ struct table_impl {
                    Variants...>::make_table(std::index_sequence<Prefix..., VariantIndexes>{},
                                             variant_indexes_t<std::decay_t<get_nth_type_t<
                                                 Current + 1,
-                                                Variants...>>>{})...};
+                                                Variants...>>>{})...
+    );
   }
 };
 
@@ -250,10 +251,9 @@ template<typename R, typename Visitor, size_t Current, typename... Variants>
 struct table_impl<true, R, Visitor, Current, Variants...> {
   template<size_t... Prefix, size_t... VariantIndexes>
   static constexpr auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
-    using dtype = R (*)(Visitor&& vis, Variants... vars);
-    return std::array<dtype, sizeof...(VariantIndexes)>{
+    return std::experimental::make_array(
         table_impl_last<Visitor, Variants...>::get_func(std::index_sequence<Prefix..., VariantIndexes>{})...
-    }; // TODO: закешировать в static
+    ); // TODO: закешировать в static
   }
 };
 
@@ -265,10 +265,10 @@ constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
   return get_from_table(table_impl<sizeof...(Variants) == 1,
                                    std::invoke_result_t<Visitor, variant_alternative_t<0, std::decay_t<Variants>>...>,
                                    Visitor, 0,
-                                   Variants&&...>::make_table(std::index_sequence<>{},
-                                                            variant_indexes_t<std::decay_t<get_nth_type_t<0,
-                                                                                                          Variants...>>>{}),
+                                   Variants&& ...>::make_table(std::index_sequence<>{},
+                                                               variant_indexes_t<std::decay_t<get_nth_type_t<0,
+                                                                                                             Variants...>>>{}),
                         vars...)(std::forward<Visitor>(vis),
-                                                         std::forward<Variants>(vars)...);
+                                 std::forward<Variants>(vars)...);
 }
 
