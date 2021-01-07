@@ -48,6 +48,27 @@ struct variant {
   constexpr variant(T&& t) noexcept(std::is_nothrow_constructible_v<find_overload_t<T, Ts...>, T>)
       : storage(in_place_type_t<find_overload_t<T, Ts...>>(), std::forward<T>(t)) {}
 
+  template<typename T, std::enable_if_t<
+      (sizeof...(Ts) > 0)
+          && !std::is_same_v<std::decay_t<T>, variant>
+          && !is_specialization<T, in_place_type_t>::value
+          && !is_size_spec<T, in_place_index_t>::value
+          && exactly_once<find_overload_t<T, Ts...>, Ts...>::value
+          && std::is_constructible_v<find_overload_t<T, Ts...>, T>, int> = 0>
+  variant& operator=(T&& t) noexcept(std::is_nothrow_constructible_v<find_overload_t<T, Ts...>, T>) {
+    using Type = find_overload_t<T, Ts...>;
+    if (this->index() == get_index_of_type_v<Type, Ts...>) {
+      get<get_index_of_type_v<Type, Ts...>>(*this) = std::forward<T>(t);
+    } else {
+      if constexpr (std::is_nothrow_constructible_v<Type, T> || !std::is_nothrow_move_constructible_v<Type>) {
+        this->template emplace<get_index_of_type_v<Type, Ts...>>(std::forward<T>(t));
+      } else {
+        this->operator=(variant(std::forward<T>(t)));
+      }
+    }
+    return *this;
+  }
+
   template<size_t I, class... Args>
   get_nth_type_t<I, Ts...>& emplace(Args&& ...args) {
     return storage.template emplace<I>(std::forward<Args>(args)...);
