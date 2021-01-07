@@ -40,17 +40,24 @@ struct variant_move_assign_base<false, Ts...>
       this->index_ = other.index_;
       return *this;
     }
-    if (this->index_ == other.index_) {
-      this->index_ = other.index_;
-      return *this;
-    }
     auto visitor =
-        [this, &other](auto& this_value_holder,
-                     auto&& other_value_holder, auto this_index, auto other_index) {
-          if constexpr (decltype(this_index)::value == decltype(other_index)::value) {
-
+        [this, &other](auto this_index, auto other_index) {
+          constexpr size_t this_index_v = decltype(this_index)::value;
+          constexpr size_t other_index_v = decltype(other_index)::value;
+          if constexpr (this_index_v == other_index_v) {
+            get_stg<this_index_v>(this->storage) = std::move(get_stg<other_index_v>(other.storage));
           } else {
-           // emplace
+           if constexpr (this_index_v != variant_npos) {
+              this->destroy_stg(this_index_v);
+            }
+            try {
+              this->storage.template emplace_stg<other_index_v>(std::move(get_stg<other_index_v>(other.storage)));
+            } catch (...) {
+              this->index_ = variant_npos;
+              throw;
+            }
+            this->index_ = other_index_v;
+            // TODO: move
           }
         };
     visit_stg(visitor, *this, other);

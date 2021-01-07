@@ -119,31 +119,74 @@ struct variant_stg_indexes<const base<flag, Ts...>> {
 template<class T>
 using variant_stg_indexes_t = typename variant_stg_indexes<T>::type;
 
+template<size_t ind, bool flag, template<bool, typename> typename base, typename... Ts>
+constexpr get_nth_type_t<ind, Ts...>& get(base<flag, Ts...>& v) {
+  return get_stg<ind>(v.storage);
+}
+
+template<size_t ind, bool flag, template<bool, typename> typename base, typename... Ts>
+constexpr get_nth_type_t<ind, Ts...> const& get(base<flag, Ts...> const& v) {
+  return get_stg<ind>(v.storage);
+}
+
+template<typename Visitor, typename... Variants>
+struct stg_table_impl_last {
+  template<size_t... Is>
+  static constexpr auto get_func(std::index_sequence<Is...>) {
+    return [](Visitor&& vis, Variants... vars) {
+      return vis(value_holder_index<Is>{}...);
+    };
+  }
+};
+
+template<bool is_last, typename R, typename Visitor, size_t Current, typename... Variants>
+struct stg_table_impl {
+  template<size_t... Prefix, size_t... VariantIndexes>
+  static auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
+    return std::array{
+        stg_table_impl<Current + 2 == sizeof...(Variants),
+                       R,
+                       Visitor,
+                       Current + 1,
+                       Variants...>::make_table(std::index_sequence<Prefix..., VariantIndexes>{},
+                                                variant_stg_indexes_t<std::decay_t<get_nth_type_t<
+                                                    Current + 1,
+                                                    Variants...>>>{})...};
+  }
+};
+
+template<typename R, typename Visitor, size_t Current, typename... Variants>
+struct stg_table_impl<true, R, Visitor, Current, Variants...> {
+  template<size_t... Prefix, size_t... VariantIndexes>
+  static constexpr auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
+    using dtype = R (*)(Visitor&& vis, Variants... vars);
+    return std::array<dtype, sizeof...(VariantIndexes)>{
+        stg_table_impl_last<Visitor, Variants...>::get_func(std::index_sequence<Prefix..., VariantIndexes>{})...
+    }; // TODO: закешировать в static
+  }
+};
+
 template<typename Table>
-constexpr auto get_stg_from_table(Table&& table) {
+constexpr auto get_from_table(Table&& table) {
   return table;
 }
 
-template<typename Table, typename VariantStg, typename... VariantStgs>
-constexpr auto get_stg_from_table(Table&& table, VariantStg&& stg, VariantStgs&& ... stgs) {
-  return get_stg_from_table(table[stg.index()], std::forward<VariantStgs>(stgs)...);
+template<typename Table, typename Variant, typename...Variants>
+constexpr auto get_from_table(Table&& table, Variant const& var, Variants const& ... vars) {
+  return get_from_table(table[var.index()], vars...);
 }
+//
+//std::invoke_result_t<Visitor,
+//                     variant_stg_alternative_t<0, std::decay_t<Variants>>&&...>
 
-/*
-  std::invoke_result_t<Visitor,
-                                                                variant_stg_alternative_t<0,
-                                                                                          std::decay_t<VariantStorages>>...>
- */
-template<typename Visitor, typename... VariantStorages>
-constexpr void visit_stg(Visitor&& vis, VariantStorages&& ... variant_stgs) {
-  get_stg_from_table(stg_table_impl<sizeof...(VariantStorages) == 1,
-                                    void,
-                                    Visitor, 0,
-                                    decltype(variant_stgs.storage)...>::make_stg_table(std::index_sequence<>{},
-                                                                                       variant_stg_indexes_t<std::decay_t<
-                                                                                           get_nth_type_t<0,
-                                                                                                          VariantStorages...>>
-                                                                                       >{}),
-                     variant_stgs...)(std::forward<Visitor>(vis),
-                                      std::move(variant_stgs.storage)...);
+template<typename Visitor, typename... Variants>
+constexpr decltype(auto) visit_stg(Visitor&& vis, Variants&& ... vars) {
+  return get_from_table(stg_table_impl<sizeof...(Variants) == 1,
+                                       void,
+                                       Visitor, 0,
+                                       Variants&& ...>::make_table(std::index_sequence<>{},
+                                                                   variant_stg_indexes_t<std::decay_t<get_nth_type_t<0,
+                                                                                                                     Variants...>>>{}),
+                        vars...)(std::forward<Visitor>(vis),
+                                 std::forward<Variants>(vars)...);
 }

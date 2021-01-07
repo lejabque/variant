@@ -224,7 +224,7 @@ template<typename Visitor, typename... Variants>
 struct table_impl_last {
   template<size_t... Is>
   static constexpr auto get_func(std::index_sequence<Is...>) {
-    return [](Visitor&& vis, Variants&& ... vars) {
+    return [](Visitor&& vis, Variants... vars) {
       return vis(get<Is>(std::forward<Variants>(vars))...);
     };
   }
@@ -250,22 +250,12 @@ template<typename R, typename Visitor, size_t Current, typename... Variants>
 struct table_impl<true, R, Visitor, Current, Variants...> {
   template<size_t... Prefix, size_t... VariantIndexes>
   static constexpr auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
-    using dtype = R (*)(Visitor&& vis, Variants&& ... vars);
+    using dtype = R (*)(Visitor&& vis, Variants... vars);
     return std::array<dtype, sizeof...(VariantIndexes)>{
         table_impl_last<Visitor, Variants...>::get_func(std::index_sequence<Prefix..., VariantIndexes>{})...
     }; // TODO: закешировать в static
   }
 };
-
-template<typename Table>
-constexpr auto get_from_table(Table&& table) {
-  return table;
-}
-
-template<typename Table, typename Variant, typename...Variants>
-constexpr auto get_from_table(Table&& table, Variant&& var, Variants&& ... vars) {
-  return get_from_table(table[var.index()], std::forward<Variants>(vars)...);
-}
 
 template<typename Visitor, typename... Variants>
 constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
@@ -275,10 +265,10 @@ constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
   return get_from_table(table_impl<sizeof...(Variants) == 1,
                                    std::invoke_result_t<Visitor, variant_alternative_t<0, std::decay_t<Variants>>...>,
                                    Visitor, 0,
-                                   Variants...>::make_table(std::index_sequence<>{},
+                                   Variants&&...>::make_table(std::index_sequence<>{},
                                                             variant_indexes_t<std::decay_t<get_nth_type_t<0,
                                                                                                           Variants...>>>{}),
-                        std::forward<Variants>(vars)...)(std::forward<Visitor>(vis),
+                        vars...)(std::forward<Visitor>(vis),
                                                          std::forward<Variants>(vars)...);
 }
 

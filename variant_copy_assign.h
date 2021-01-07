@@ -46,23 +46,23 @@ struct variant_copy_assign_base<false, Ts...>
       this->index_ = other.index_;
       return *this;
     }
-    auto visitor =
-        [this, &other](auto& this_value_holder,
-                     auto const& other_value_holder, auto this_index, auto other_index) {
-
-          using OtherT = typename decltype(other_value_holder)::Type;
-          if constexpr (decltype(this_index)::value == decltype(other_index)::value) {
-
-          } else {
-            if constexpr (std::is_nothrow_copy_constructible_v<OtherT>
-                || std::is_nothrow_move_constructible_v<OtherT>) {
-              // emplace
-            } else {
-              this->operator=(variant_copy_assign_base(other));
-            }
-          }
-        };
-    visit_stg(visitor, *this, other);
+//    auto visitor =
+//        [this, &other](auto& this_value_holder,
+//                     auto const& other_value_holder, auto this_index, auto other_index) {
+//
+//          using OtherT = typename decltype(other_value_holder)::Type;
+//          if constexpr (decltype(this_index)::value == decltype(other_index)::value) {
+//
+//          } else {
+//            if constexpr (std::is_nothrow_copy_constructible_v<OtherT>
+//                || std::is_nothrow_move_constructible_v<OtherT>) {
+//              // emplace
+//            } else {
+//              this->operator=(variant_copy_assign_base(other));
+//            }
+//          }
+//        };
+//    visit_stg(visitor, *this, other);
     return *this;
     // TODO:
     // Otherwise, if the alternative held by rhs is either nothrow copy constructible or not nothrow move constructible

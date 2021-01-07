@@ -247,41 +247,4 @@ struct value_holder_index {
   static constexpr size_t value = Index;
 };
 
-template<typename Visitor, typename... Storages>
-struct stg_table_impl_last {
-  template<size_t... Is>
-  static constexpr auto get_func(std::index_sequence<Is...>) {
-    return [](Visitor&& vis, Storages&& ... stgs) {
-      return vis(get_stg_stg<Is>(std::forward<Storages>(stgs)).obj..., value_holder_index<Is>{}...);
-    };
-  }
-};
-
-template<bool is_last, typename R, typename Visitor, size_t Current, typename... Storages>
-struct stg_table_impl {
-  template<size_t... Prefix, size_t... StorageIndexes>
-  static auto make_stg_table(std::index_sequence<Prefix...>, std::index_sequence<StorageIndexes...>) {
-    return std::array{
-        stg_table_impl<Current + 2 == sizeof...(Storages),
-                       R,
-                       Visitor,
-                       Current + 1,
-                       Storages...>::make_stg_table(std::index_sequence<Prefix..., StorageIndexes>{},
-                                                    storage_indexes_t<std::decay_t<get_nth_type_t<
-                                                        Current + 1,
-                                                        Storages...>>>{})...};
-  }
-};
-
-template<typename R, typename Visitor, size_t Current, typename... Storages>
-struct stg_table_impl<true, R, Visitor, Current, Storages...> {
-  template<size_t... Prefix, size_t... StorageIndexes>
-  static constexpr auto make_stg_table(std::index_sequence<Prefix...>, std::index_sequence<StorageIndexes...>) {
-    using dtype = R (*)(Visitor&& vis, Storages&& ... stgs);
-    return std::array<dtype, sizeof...(StorageIndexes)>{
-        stg_table_impl_last<Visitor, Storages...>::get_func(std::index_sequence<Prefix..., StorageIndexes>{})...
-    }; // TODO: закешировать в static
-  }
-};
-
 // TODO: visitor, который передает value_holder + compile-time?? index
