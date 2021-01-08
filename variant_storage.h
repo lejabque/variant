@@ -16,7 +16,6 @@ struct variant_storage : variant_copy_assign_base_t<Ts...>,
       this->swap_stg(this->index_, other.storage);
       return;
     }
-    // TODO: else
     variant_storage tmp(std::move(other));
     other = std::move(*this);
     *this = std::move(tmp);

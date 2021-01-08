@@ -1,9 +1,5 @@
 #pragma once
 
-struct non_existing_type {
-  non_existing_type() = delete;
-};
-
 template<size_t ind, bool less, typename... Ts>
 struct get_nth_type_impl;
 
@@ -37,20 +33,13 @@ struct get_index_of_type<true, Target, Ts...> {
 template<typename Target, typename T, typename... Ts>
 static constexpr size_t get_index_of_type_v = get_index_of_type<std::is_same_v<T, Target>, Target, Ts...>::ind;
 
-template<typename Target, typename T, typename... Ts>
+template<typename Target, typename... Ts>
 struct cnt_type {
-  static constexpr size_t cnt = cnt_type<Target, Ts...>::cnt + std::is_same_v<T, Target>;
-};
-
-template<typename Target, typename T>
-struct cnt_type<Target, T> {
-  static constexpr size_t cnt = std::is_same_v<T, Target>;
+  static constexpr size_t cnt = (std::is_same_v<Ts, Target> + ...);
 };
 
 template<typename Target, typename... Ts>
 static constexpr size_t cnt_type_v = cnt_type<Target, Ts...>::cnt;
-
-// https://en.cppreference.com/w/cpp/types/type_identity since C++20 😢
 
 template<typename T>
 struct Arr { T x[1]; };
@@ -72,7 +61,8 @@ template<bool is_bool, typename U, typename T>
 struct find_overload_impl<is_bool, U, T> {
   template<typename E = T>
   std::enable_if_t<(!std::is_same_v<std::decay_t<T>, bool> || is_bool)
-                       && std::is_same_v<void, std::void_t<decltype(Arr<E>{{std::declval<U>()}})>>, E> operator()(T value) {}
+                       && std::is_same_v<void, std::void_t<decltype(Arr<E>{{std::declval<U>()}})>>,
+                   E> operator()(T value) {}
 };
 
 template<typename U, typename... Types>

@@ -89,22 +89,6 @@ struct variant_dtor_base<false, Ts...> {
   size_t index_ = 0;
 };
 
-template<size_t I, class T>
-struct variant_stg_alternative;
-
-template<size_t I, bool flag, template<bool, typename> typename base, typename... Ts>
-struct variant_stg_alternative<I, base<flag, Ts...>> {
-  using type = get_nth_type_t<I, Ts...>;
-};
-
-template<size_t I, bool flag, template<bool, typename> typename base, typename... Ts>
-struct variant_stg_alternative<I, const base<flag, Ts...>> {
-  using type = const get_nth_type_t<I, Ts...>;
-};
-
-template<size_t I, class T>
-using variant_stg_alternative_t = typename variant_stg_alternative<I, T>::type;
-
 
 template<class T>
 struct variant_stg_indexes;

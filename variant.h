@@ -28,13 +28,13 @@ struct variant {
   template<typename U, typename... Args, std::enable_if_t<
       cnt_type_v<U, Ts...> == 1 && std::is_constructible_v<U, Args...>, int> = 0>
   constexpr explicit variant(in_place_type_t<U> in_place_flag, Args&& ...args)
-      : storage(in_place_flag, std::forward<Args>(args)...) {} // TODO: enable_if for unique U
+      : storage(in_place_flag, std::forward<Args>(args)...) {}
 
   template<size_t I, typename... Args, std::enable_if_t<
       I < sizeof...(Ts) && std::is_constructible_v<get_nth_type_t<I, Ts...>, Args...>, int> = 0>
   constexpr explicit variant(in_place_index_t<I> in_place_flag, Args&& ...args)
       : storage(in_place_flag, std::forward<Args>(args)...) {
-  } // TODO: enable_if for I < sizeof...(Ts) and constructible
+  }
 
   template<typename T, std::enable_if_t<
       (sizeof...(Ts) > 0)
@@ -110,14 +110,11 @@ struct variant {
   friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1,
                                     Target> const* get_if(variant<Types...> const* v);
 
-  //  template<typename Target, typename... Types>
-  //  friend constexpr Target& get(variant<Types...>& v);
-
   template<typename Target, typename... Types>
   friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, bool>
   holds_alternative(variant<Types...> const& v);
 
-  // TODO: private:
+ private:
   variant_storage<Ts...> storage;
 };
 
@@ -142,7 +139,6 @@ constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>& get(varia
   if (get_index_of_type_v<Target, Types...> != v.index()) {
     throw bad_variant_access();
   }
-  // TODO: unique T
   return get_stg<Target>(v.storage.storage);
 }
 
@@ -151,11 +147,9 @@ constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target> const& get
   if (get_index_of_type_v<Target, Types...> != v.index()) {
     throw bad_variant_access();
   }
-// TODO: unique T
   return get_stg<Target>(v.storage.storage);
 }
 
-// GET IF
 template<size_t ind, typename... Types>
 constexpr get_nth_type_t<ind, Types...>* get_if(variant<Types...>* v) {
   if (ind != v->index()) {
@@ -177,7 +171,6 @@ constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>* get_if(va
   if (get_index_of_type_v<Target, Types...> != v->index()) {
     return nullptr;
   }
-  // TODO: unique T
   return &get_stg<Target>(v->storage.storage);
 }
 
@@ -186,13 +179,11 @@ constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target> const* get
   if (get_index_of_type_v<Target, Types...> != v->index()) {
     return nullptr;
   }
-// TODO: unique T
   return &get_stg<Target>(v->storage.storage);
 }
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, bool> holds_alternative(variant<Types...> const& v) {
-  // TODO: unique T
   return get_index_of_type_v<Target, Types...> == v.index();
 }
 
@@ -252,7 +243,7 @@ struct table_impl_last {
 template<bool is_last, typename R, typename Visitor, size_t Current, typename... Variants>
 struct table_impl {
   template<size_t... Prefix, size_t... VariantIndexes>
-  static auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
+  static constexpr auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
     return std::experimental::make_array(
         table_impl<Current + 2 == sizeof...(Variants),
                    R,

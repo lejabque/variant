@@ -18,12 +18,9 @@ struct value_holder {
   constexpr explicit value_holder(in_place_index_t<0>, Args&& ... args)
       : obj(std::forward<Args>(args)...) {}
 
-  static constexpr void construct_value_holder(value_holder* holder, value_holder const& other) {
-    new(holder) value_holder(other);
-  }
-
-  static constexpr void construct_value_holder(value_holder* holder, value_holder&& other) {
-    new(holder) value_holder(std::move(other));
+  template<typename OtherHolder>
+  static constexpr void construct_value_holder(value_holder* holder, OtherHolder&& other) {
+    new(holder) value_holder(std::forward<OtherHolder>(other));
   }
 
   void swap(value_holder& other) {

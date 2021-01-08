@@ -52,7 +52,6 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
               throw;
             }
             this->index_ = other_index_v;
-            // TODO: move
           }
         };
     visit_stg(visitor, *this, other);
@@ -64,17 +63,3 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
 
 template<typename... Ts>
 using variant_move_assign_base_t = variant_move_assign_base<variant_traits<Ts...>::trivial::move_assign, Ts...>;
-
-// TODO: проблемы с implicit instantiation of undefined template
-template<bool flag, typename... Ts>
-struct variant_stg_indexes<variant_move_assign_base<flag, Ts...>> {
-  using type = std::index_sequence_for<Ts...>;
-};
-
-template<bool flag, typename... Ts>
-struct variant_stg_indexes<const variant_move_assign_base<flag, Ts...>> {
-  using type = std::index_sequence_for<Ts...>;
-};
-
-template<class T>
-using variant_stg_indexes_t = typename variant_stg_indexes<T>::type;
