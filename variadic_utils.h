@@ -55,26 +55,28 @@ static constexpr size_t cnt_type_v = cnt_type<Target, Ts...>::cnt;
 template<typename T>
 struct Arr { T x[1]; };
 
-template<typename U, typename... Ts>
+template<bool is_bool, typename U, typename... Ts>
 struct find_overload_impl;
 
-template<typename U, typename T, typename... Ts>
-struct find_overload_impl<U, T, Ts...> : find_overload_impl<U, Ts...> {
-  using find_overload_impl<U, Ts...>::operator();
+template<bool is_bool, typename U, typename T, typename... Ts>
+struct find_overload_impl<is_bool, U, T, Ts...> : find_overload_impl<is_bool, U, Ts...> {
+  using find_overload_impl<is_bool, U, Ts...>::operator();
 
   template<typename E = T>
-  std::enable_if_t<std::is_same_v<void, std::void_t<decltype(Arr<E>{{std::declval<U>()}})>>,
+  std::enable_if_t<(!std::is_same_v<std::decay_t<T>, bool> || is_bool)
+                       && std::is_same_v<void, std::void_t<decltype(Arr<E>{{std::declval<U>()}})>>,
                    E> operator()(T value) {}
 };
 
-template<typename U, typename T>
-struct find_overload_impl<U, T> {
+template<bool is_bool, typename U, typename T>
+struct find_overload_impl<is_bool, U, T> {
   template<typename E = T>
-  std::enable_if_t<std::is_same_v<void, std::void_t<decltype(Arr<E>{{std::declval<U>()}})>>, E> operator()(T value) {}
+  std::enable_if_t<(!std::is_same_v<std::decay_t<T>, bool> || is_bool)
+                       && std::is_same_v<void, std::void_t<decltype(Arr<E>{{std::declval<U>()}})>>, E> operator()(T value) {}
 };
 
 template<typename U, typename... Types>
-using find_overload_t = typename std::invoke_result_t<find_overload_impl<U,
+using find_overload_t = typename std::invoke_result_t<find_overload_impl<std::is_same_v<std::decay_t<U>, bool>, U,
                                                                          Types...>, U>;
 
 template<class T>
