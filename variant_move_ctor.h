@@ -28,22 +28,14 @@ struct variant_move_ctor_base<false, Ts...> : variant_dtor_base_t<Ts...> {
   constexpr variant_move_ctor_base(variant_move_ctor_base&& other) noexcept(variant_traits<Ts...>::noexcept_value::move_ctor) {
     this->index_ = other.index_;
     if (this->index_ != variant_npos) {
-      this->move_stg(this->index_, std::move(other.storage));
+     // this->move_stg(this->index_, std::move(other.storage));
+      auto visiter = [this, &other](auto&& other_value, auto other_index) {
+        constexpr size_t other_index_v = decltype(other_index)::value;
+        this->storage.template move_stg<other_index_v>(std::move(other.storage));
+      };
+      visit_indexed(visiter, other);
     }
   };
-
-  template<size_t... Is>
-  void call_move_stg(std::index_sequence<Is...>, size_t index, storage_union<Ts...>&& other) {
-    using dtype = void (*)(storage_union<Ts...>&, storage_union<Ts...>&&);
-    static dtype movers[] = {[](storage_union<Ts...>& stg, storage_union<Ts...>&& other) {
-      stg.template move_stg<Is>(std::move(other));
-    }...};
-    movers[index](this->storage, std::move(other));
-  }
-
-  constexpr void move_stg(size_t index, storage_union<Ts...>&& other) {
-    call_move_stg(std::index_sequence_for<Ts...>{}, index, std::move(other));
-  }
 
   ~variant_move_ctor_base() = default;
 };

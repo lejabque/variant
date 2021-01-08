@@ -13,7 +13,13 @@ struct variant_storage : variant_copy_assign_base_t<Ts...>,
       return;
     }
     if (this->index_ == other.index_) {
-      this->swap_stg(this->index_, other.storage);
+      auto visiter = [](auto&& this_value, auto&& other_value, auto this_index, auto other_index) {
+        if constexpr (decltype(this_index)::value == decltype(other_index)::value) {
+          using std::swap;
+          swap(this_value, other_value);
+        }
+      };
+      visit_indexed(visiter, *this, other);
       return;
     }
     variant_storage tmp(std::move(other));
@@ -40,7 +46,7 @@ struct variant_storage : variant_copy_assign_base_t<Ts...>,
   template<size_t I, class... Args>
   types_at_t<I, Ts...>& emplace(Args&& ...args) {
     if (this->index_ != variant_npos) {
-      this->destroy_stg(this->index_);
+      this->destroy_stg();
     }
     try {
       this->storage.template emplace_stg<I>(std::forward<Args>(args)...);
@@ -52,17 +58,4 @@ struct variant_storage : variant_copy_assign_base_t<Ts...>,
     return get_stg<I>(this->storage);
   }
   ~variant_storage() = default;
- private:
-  template<size_t... Is>
-  void call_swap_stg(std::index_sequence<Is...>, size_t index, storage_union<Ts...>& other) {
-    using dtype = void (*)(storage_union<Ts...>&, storage_union<Ts...>&);
-    static dtype swapper[] = {[](storage_union<Ts...>& stg, storage_union<Ts...>& other) {
-      stg.template swap_stg<Is>(other);
-    }...};
-    swapper[index](this->storage, other);
-  }
-
-  constexpr void swap_stg(size_t index, storage_union<Ts...>& other) {
-    call_swap_stg(std::index_sequence_for<Ts...>{}, index, other);
-  }
 };

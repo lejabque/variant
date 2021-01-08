@@ -26,26 +26,19 @@ struct variant_copy_ctor_base<false, Ts...> : variant_move_assign_base_t<Ts...> 
   variant_copy_ctor_base(variant_copy_ctor_base const& other) : base(variant_dummy) {
     this->index_ = other.index_;
     if (this->index_ != variant_npos) {
-      this->copy_stg(this->index_, other.storage);
+    //  this->copy_stg(this->index_, other.storage);
+      auto visiter = [this, &other](auto const& other_value, auto other_index) {
+        constexpr size_t other_index_v = decltype(other_index)::value;
+        this->storage.template copy_stg<other_index_v>(other.storage);
+      };
+      visit_indexed(visiter, other);
     }
   };
+
   constexpr variant_copy_ctor_base(variant_copy_ctor_base&& other) noexcept(std::is_nothrow_move_constructible_v<base>) = default;
 
   constexpr variant_copy_ctor_base& operator=(variant_copy_ctor_base const&) = default;
   constexpr variant_copy_ctor_base& operator=(variant_copy_ctor_base&&) noexcept(std::is_nothrow_move_assignable_v<base>) = default;
-
-  template<size_t... Is>
-  void call_copy_stg(std::index_sequence<Is...>, size_t index, storage_union<Ts...> const& other) {
-    using dtype = void (*)(storage_union<Ts...>&, storage_union<Ts...> const&);
-    static dtype copyers[] = {
-        [](storage_union<Ts...>& stg, storage_union<Ts...> const& other) { stg.template copy_stg<Is>(other); }...
-    };
-    copyers[index](this->storage, other);
-  }
-
-  constexpr void copy_stg(size_t index, storage_union<Ts...> const& other) {
-    call_copy_stg(std::index_sequence_for<Ts...>{}, index, other);
-  }
 
   ~variant_copy_ctor_base() = default;
 };

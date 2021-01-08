@@ -15,7 +15,7 @@ struct value_holder {
   constexpr value_holder& operator=(value_holder&&) noexcept(std::is_nothrow_move_assignable_v<T>) = default;
 
   template<typename... Args>
-  constexpr explicit value_holder(in_place_index_t<0>, Args&& ... args)
+  constexpr explicit value_holder(in_place_type_t<T>, Args&& ... args)
       : obj(std::forward<Args>(args)...) {}
 
   template<typename OtherHolder>
@@ -67,11 +67,11 @@ struct value_holder<false, T> {
   }
 
   static constexpr void construct_value_holder(value_holder* holder, value_holder&& other) {
-    new(&holder->obj) T(std::move(*reinterpret_cast<T const*>(&other.obj)));
+    new(&holder->obj) T(std::move(*reinterpret_cast<T*>(&other.obj)));
   }
 
   template<typename... Args>
-  explicit value_holder(in_place_index_t<0>, Args&& ... args) {
+  explicit value_holder(in_place_type_t<T>, Args&& ... args) {
     new(&obj) T(std::forward<Args>(args)...);
   }
 
@@ -121,15 +121,15 @@ union storage_union<T, Ts...> {
 
   template<typename... Args>
   constexpr explicit storage_union(in_place_type_t<T> in_place_flag, Args&& ... args)
-      : obj(in_place_index_t<0>(), std::forward<Args>(args)...) {}
+      : obj(in_place_flag, std::forward<Args>(args)...) {}
 
   template<size_t I, typename... Args>
-  constexpr explicit storage_union(in_place_index_t<I> in_place_flag, Args&& ... args)
+  constexpr explicit storage_union(in_place_index_t<I>, Args&& ... args)
       : stg(in_place_index<I - 1>, std::forward<Args>(args)...) {}
 
   template<typename... Args>
   constexpr explicit storage_union(in_place_index_t<0> in_place_flag, Args&& ... args)
-      : obj(in_place_flag, std::forward<Args>(args)...) {}
+      : obj(in_place_type<T>, std::forward<Args>(args)...) {}
 
   template<size_t I>
   constexpr void destroy_stg() {
@@ -150,15 +150,6 @@ union storage_union<T, Ts...> {
   }
 
   template<size_t I>
-  constexpr void swap_stg(storage_union& other) {
-    if constexpr (I == 0) {
-      obj.swap(other.obj);
-    } else {
-      stg.template swap_stg<I - 1>(other.stg);
-    }
-  }
-
-  template<size_t I>
   constexpr void move_stg(storage_union&& other) {
     if constexpr (I == 0) {
       value_holder_t::construct_value_holder(&obj, std::move(other.obj));
@@ -170,7 +161,7 @@ union storage_union<T, Ts...> {
   template<size_t I, class... Args>
   void emplace_stg(Args&& ... args) {
     if constexpr (I == 0) {
-      new(&obj) value_holder_t(in_place_index_t<0>(),
+      new(&obj) value_holder_t(in_place_type<T>,
                                std::forward<Args>(args)...);
     } else {
       stg.template emplace_stg<I - 1>(std::forward<Args>(args)...);
@@ -181,24 +172,6 @@ union storage_union<T, Ts...> {
   storage_union<Ts...> stg;
   variant_dummy_t dummy;
 };
-
-template<size_t ind, typename T, typename... Ts>
-auto&& get_stg_stg(storage_union<T, Ts...>&& storage) {
-  if constexpr (ind == 0) {
-    return storage;
-  } else {
-    return get_stg_stg<ind - 1, Ts...>(storage.stg);
-  }
-}
-
-template<size_t ind, typename T, typename... Ts>
-auto& get_stg_stg(storage_union<T, Ts...>& storage) {
-  if constexpr (ind == 0) {
-    return storage;
-  } else {
-    return get_stg_stg<ind - 1, Ts...>(storage.stg);
-  }
-}
 
 template<size_t ind, typename T, typename... Ts>
 constexpr types_at_t<ind, T, Ts...> const& get_stg(storage_union<T, Ts...> const& storage) {
@@ -248,5 +221,3 @@ template<size_t Index>
 struct value_holder_index {
   static constexpr size_t value = Index;
 };
-
-// TODO: visitor, который передает value_holder + compile-time?? index

@@ -31,7 +31,7 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
       return *this;
     }
     if (other.index_ == variant_npos) {
-      this->destroy_stg(this->index_);
+      this->destroy_stg();
       this->index_ = other.index_;
       return *this;
     }
@@ -43,7 +43,7 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
             get_stg<this_index_v>(this->storage) = std::move(get_stg<other_index_v>(other.storage));
           } else {
             if constexpr (this_index_v != variant_npos) {
-              this->destroy_stg(this_index_v);
+              this->destroy_stg();
             }
             try {
               this->storage.template emplace_stg<other_index_v>(std::move(get_stg<other_index_v>(other.storage)));

@@ -28,12 +28,10 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
 
   constexpr variant_copy_assign_base& operator=(variant_copy_assign_base const& other) {
     if (this->index_ == variant_npos && other.index_ == variant_npos) {
-      // If both *this and rhs are valueless by exception, does nothing
       return *this;
     }
     if (other.index_ == variant_npos) {
-      // Otherwise, if rhs is valueless, but *this is not, destroys the value contained in *this and makes it valueless.
-      this->destroy_stg(this->index_);
+      this->destroy_stg();
       this->index_ = other.index_;
       return *this;
     }
@@ -47,7 +45,7 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
             if constexpr(std::is_nothrow_copy_constructible_v<types_at_t<other_index_v, Ts...>>
                 || !std::is_nothrow_move_constructible_v<types_at_t<other_index_v, Ts...>>) {
               if constexpr (this_index_v != variant_npos) {
-                this->destroy_stg(this_index_v);
+                this->destroy_stg();
               }
               try {
                 this->storage.template emplace_stg<other_index_v>(get_stg<other_index_v>(other.storage));

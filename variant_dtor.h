@@ -33,7 +33,7 @@ struct variant_dtor_base {
   }
   ~variant_dtor_base() = default;
 
-  constexpr void destroy_stg(size_t index) {}
+  constexpr void destroy_stg() {}
 
   storage_t storage;
   size_t index_ = 0;
@@ -65,7 +65,7 @@ struct variant_dtor_base<false, Ts...> {
 
   ~variant_dtor_base() {
     if (index_ != variant_npos) {
-      destroy_stg(index_);
+      destroy_stg();
     }
   }
 
@@ -73,18 +73,14 @@ struct variant_dtor_base<false, Ts...> {
     return index_;
   }
 
-  template<size_t... Is>
-  void call_destroy_stg(std::index_sequence<Is...>, size_t index) {
-    using dtype = void (*)(storage_t&);
-    static constexpr dtype destroyers[] = {
-        [](storage_t& stg) { stg.template destroy_stg<Is>(); }...
+  constexpr void destroy_stg() {
+    auto visiter = [](auto& this_value, auto this_index) {
+      using this_type = std::decay_t<decltype(this_value)>;
+      this_value.~this_type();
     };
-    destroyers[index](storage);
+    visit_indexed(visiter, *this);
   }
 
-  constexpr void destroy_stg(size_t index) {
-    call_destroy_stg(std::index_sequence_for<Ts...>{}, index);
-  }
   storage_t storage;
   size_t index_ = 0;
 };
@@ -92,7 +88,7 @@ struct variant_dtor_base<false, Ts...> {
 template<class T>
 struct variant_stg_indexes;
 
-template<bool flag, template<bool, typename> typename base, typename... Ts>
+template<bool flag, template<bool, typename...> typename base, typename... Ts>
 struct variant_stg_indexes<base<flag, Ts...>> {
   using type = std::index_sequence_for<Ts...>;
 };
@@ -100,95 +96,58 @@ struct variant_stg_indexes<base<flag, Ts...>> {
 template<class T>
 using variant_stg_indexes_t = typename variant_stg_indexes<T>::type;
 
-template<size_t ind, bool flag, template<bool, typename> typename base, typename... Ts>
+template<size_t ind, template<typename...> typename base, typename... Ts>
+constexpr types_at_t<ind, Ts...>& get(base<Ts...>& v) {
+  return get_stg<ind>(v.storage);
+}
+
+template<size_t ind, template<typename...> typename base, typename... Ts>
+constexpr types_at_t<ind, Ts...> const& get(base<Ts...> const& v) {
+  return get_stg<ind>(v.storage);
+}
+
+template<size_t ind, bool flag, template<bool, typename...> typename base, typename... Ts>
 constexpr types_at_t<ind, Ts...>& get(base<flag, Ts...>& v) {
   return get_stg<ind>(v.storage);
 }
 
-template<size_t ind, bool flag, template<bool, typename> typename base, typename... Ts>
+template<size_t ind, bool flag, template<bool, typename...> typename base, typename... Ts>
 constexpr types_at_t<ind, Ts...> const& get(base<flag, Ts...> const& v) {
   return get_stg<ind>(v.storage);
 }
-//
-//template<typename Visitor, typename... Variants>
-//struct stg_table_impl_last {
-//  template<size_t... Is>
-//  static constexpr auto get_func(std::index_sequence<Is...>) {
-//    return [](Visitor&& vis, Variants... vars) {
-//      return vis(value_holder_index<Is>{}...);
-//    };
-//  }
-//};
-//
-//template<bool is_last, typename R, typename Visitor, size_t Current, typename... Variants>
-//struct stg_table_impl {
-//  template<size_t... Prefix, size_t... VariantIndexes>
-//  static auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
-//    return std::experimental::make_array(
-//        stg_table_impl<Current + 2 == sizeof...(Variants),
-//                       R,
-//                       Visitor,
-//                       Current + 1,
-//                       Variants...>::make_table(std::index_sequence<Prefix..., VariantIndexes>{},
-//                                                variant_stg_indexes_t<std::decay_t<types_at_t<
-//                                                    Current + 1,
-//                                                    Variants...>>>{})...);
-//  }
-//};
-//
-//template<typename R, typename Visitor, size_t Current, typename... Variants>
-//struct stg_table_impl<true, R, Visitor, Current, Variants...> {
-//  template<size_t... Prefix, size_t... VariantIndexes>
-//  static constexpr auto make_table(std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>) {
-//    return std::experimental::make_array(
-//        stg_table_impl_last<Visitor, Variants...>::get_func(std::index_sequence<Prefix..., VariantIndexes>{})...
-//    ); // TODO: закешировать в static
-//  }
-//};
-//
-//template<typename Table>
-//constexpr auto const& get_from_table(Table const& table) {
-//  return table;
-//}
-//
-//template<typename Table, typename... Is>
-//constexpr auto const& get_from_table(Table const& table, size_t index, Is... indexes) {
-//  return get_from_table(table[index], indexes...);
-//}
-//
-//template<class T> // TODO: костыль
-//using variant_index_t = value_holder_index<0>;
-//
-//template<typename Visitor, typename... Variants>
-//constexpr decltype(auto) visit_indexed(Visitor&& vis, Variants&& ... vars) {
-//  return get_from_table(stg_table_impl<sizeof...(Variants) == 1,
-//                                       std::invoke_result_t<Visitor,
-//                                                            variant_index_t<std::decay_t<Variants>> ...>,
-//                                       Visitor, 0,
-//                                       Variants&& ...>::make_table(std::index_sequence<>{},
-//                                                                   variant_stg_indexes_t<std::decay_t<types_at_t<0,
-//                                                                                                                 Variants...>>>{}),
-//                        vars.index()...)(std::forward<Visitor>(vis),
-//                                 std::forward<Variants>(vars)...);
-//}
-
 
 template<size_t I, typename T>
-struct alt;
+struct alternative;
 
 template<size_t I, template<typename...> typename base, typename... Ts>
-struct alt<I, base<Ts...>> {
+struct alternative<I, base<Ts...>> {
+  using type = types_at_t<I, Ts...>;
+};
+
+template<size_t I, template<typename...> typename base, typename... Ts>
+struct alternative<I, base<Ts...>&> {
+  using type = types_at_t<I, Ts...>&;
+};
+
+template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>
+struct alternative<I, base<flag, Ts...>> {
   using type = types_at_t<I, Ts...>;
 };
 
 template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>
-struct alt<I, base<flag, Ts...>> {
-  using type = types_at_t<I, Ts...>;
+struct alternative<I, base<flag, Ts...>&> {
+  using type = types_at_t<I, Ts...>&;
 };
 
-template<size_t I, typename T>
-using alt_t = typename alt<I, T>::type;
 
+template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>
+struct alternative<I, base<flag, Ts...> const&> {
+  using type = types_at_t<I, Ts...> const&;
+};
+
+
+template<size_t I, typename T>
+using alternative_t = typename alternative<I, T>::type;
 
 template<class T>
 struct alt_indexes;
@@ -286,7 +245,7 @@ template<typename Visitor, typename... Variants>
 constexpr decltype(auto) visit_indexed(Visitor&& vis, Variants&& ... vars) {
   return get_from_table(table_cache_t<true,
                                       std::invoke_result_t<Visitor,
-                                                           alt_t<0, std::decay_t<Variants>>...,
+                                                           alternative_t<0, Variants>...,
                                                            value_holder_zero<Variants>...>,
                                       Visitor,
                                       Variants...>::array, vars.index()...)(std::forward<Visitor>(vis),
