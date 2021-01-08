@@ -24,31 +24,7 @@ struct type_index_impl<false, Target, T, Ts...> {
 template<typename Target, typename T, typename... Ts>
 inline constexpr size_t type_index_v = type_index_impl<std::is_same_v<T, Target>, Target, Ts...>::ind;
 
-template<size_t I, typename T>
-struct variant_alternative;
 
-template<size_t I, template<typename...> typename variant, typename... Ts>
-struct variant_alternative<I, variant<Ts...>> {
-  using type = types_at_t<I, Ts...>;
-};
-
-template<size_t I, template<typename...> typename variant, typename... Ts>
-struct variant_alternative<I, const variant<Ts...>> {
-  using type = const types_at_t<I, Ts...>;
-};
-
-template<size_t I, template<typename...> typename variant, typename... Ts>
-struct variant_alternative<I, volatile variant<Ts...>> {
-  using type = volatile types_at_t<I, Ts...>;
-};
-
-template<size_t I, template<typename...> typename variant, typename... Ts>
-struct variant_alternative<I, const volatile variant<Ts...>> {
-  using type = const volatile types_at_t<I, Ts...>;
-};
-
-template<size_t I, typename T>
-using variant_alternative_t = typename variant_alternative<I, T>::type;
 
 template<typename T>
 struct find_overload_array { T x[1]; };

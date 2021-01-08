@@ -36,7 +36,7 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
       return *this;
     }
     auto visitor =
-        [this, &other](auto this_index, auto other_index) {
+        [this, &other](auto&& first, auto&& second, auto this_index, auto other_index) {
           constexpr size_t this_index_v = decltype(this_index)::value;
           constexpr size_t other_index_v = decltype(other_index)::value;
           if constexpr (this_index_v == other_index_v) {
@@ -54,7 +54,7 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
             this->index_ = other_index_v;
           }
         };
-    visit_stg(visitor, *this, other);
+    visit_indexed(visitor, *this, other);
     return *this;
   };
 

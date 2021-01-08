@@ -198,50 +198,73 @@ struct variant_size<const variant<Types...>> : std::integral_constant<size_t, si
 
 template<class T> inline constexpr size_t variant_size_v = variant_size<T>::value;
 
-template<typename R, typename Visitor, size_t CurrentLvl, typename PrefixSeq, typename VariantSeq, typename... Variants>
-struct table_cache;
+//template<typename R, typename Visitor, size_t CurrentLvl, typename PrefixSeq, typename VariantSeq, typename... Variants>
+//struct table_cache;
+//
+//template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, typename... Variants>
+//struct table_cache<R,
+//                   Visitor,
+//                   CurrentLvl,
+//                   std::index_sequence<Prefix...>,
+//                   std::index_sequence<>,
+//                   Variants...> {
+//  static constexpr auto array = [](Visitor&& vis, Variants... vars) {
+//    return vis(get<Prefix>(std::forward<Variants>(vars))...);
+//  };
+//};
+//
+//template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, size_t... VariantIndexes, typename... Variants>
+//struct table_cache<R,
+//                   Visitor,
+//                   CurrentLvl,
+//                   std::index_sequence<Prefix...>,
+//                   std::index_sequence<VariantIndexes...>,
+//                   Variants...> {
+//  static constexpr auto array = std::experimental::make_array(table_cache<R,
+//                                                                          Visitor,
+//                                                                          CurrentLvl + 1,
+//                                                                          std::index_sequence<Prefix...,
+//                                                                                              VariantIndexes>,
+//                                                                          variant_indexes_by_ind_t<CurrentLvl + 1,
+//                                                                                                   Variants...>,
+//                                                                          Variants...>::array...
+//  );
+//};
 
-template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, typename... Variants>
-struct table_cache<R,
-                   Visitor,
-                   CurrentLvl,
-                   std::index_sequence<Prefix...>,
-                   std::index_sequence<>,
-                   Variants...> {
-  static constexpr auto array = [](Visitor&& vis, Variants... vars) {
-    return vis(get<Prefix>(std::forward<Variants>(vars))...);
-  };
+
+template<size_t I, typename T>
+struct variant_alternative;
+
+template<size_t I, template<typename...> typename variant, typename... Ts>
+struct variant_alternative<I, variant<Ts...>> {
+  using type = types_at_t<I, Ts...>;
 };
 
-template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, size_t... VariantIndexes, typename... Variants>
-struct table_cache<R,
-                   Visitor,
-                   CurrentLvl,
-                   std::index_sequence<Prefix...>,
-                   std::index_sequence<VariantIndexes...>,
-                   Variants...> {
-  static constexpr auto array = std::experimental::make_array(table_cache<R,
-                                                                          Visitor,
-                                                                          CurrentLvl + 1,
-                                                                          std::index_sequence<Prefix...,
-                                                                                              VariantIndexes>,
-                                                                          variant_indexes_by_ind_t<CurrentLvl + 1,
-                                                                                                   Variants...>,
-                                                                          Variants...>::array...
-  );
+template<size_t I, template<typename...> typename variant, typename... Ts>
+struct variant_alternative<I, const variant<Ts...>> {
+  using type = const types_at_t<I, Ts...>;
 };
 
-template<typename Visitor, typename... Variants>
-using table_cache_t = table_cache<std::invoke_result_t<Visitor, variant_alternative_t<0, std::decay_t<Variants>>...>,
-                                  Visitor, 0, std::index_sequence<>,
-                                  variant_indexes_t<std::decay_t<types_at_t<0, Variants...>>>, Variants&& ...>;
+template<size_t I, template<typename...> typename variant, typename... Ts>
+struct variant_alternative<I, volatile variant<Ts...>> {
+  using type = volatile types_at_t<I, Ts...>;
+};
+
+template<size_t I, template<typename...> typename variant, typename... Ts>
+struct variant_alternative<I, const volatile variant<Ts...>> {
+  using type = const volatile types_at_t<I, Ts...>;
+};
+
+template<size_t I, typename T>
+using variant_alternative_t = typename variant_alternative<I, T>::type;
 
 template<typename Visitor, typename... Variants>
 constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
   if ((vars.valueless_by_exception() || ...)) {
     throw bad_variant_access();
   }
-  return get_from_table(table_cache_t<Visitor, Variants...>::array, vars.index()...)(std::forward<Visitor>(vis),
+  return get_from_table(table_cache_t<false, std::invoke_result_t<Visitor,
+                                      alt_t<0, std::decay_t<Variants>>...>, Visitor, Variants...>::array, vars.index()...)(std::forward<Visitor>(vis),
                                                                                      std::forward<Variants>(vars)...);
 }
 
