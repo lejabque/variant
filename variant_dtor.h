@@ -174,14 +174,15 @@ template<typename Table, typename Variant, typename...Variants>
 constexpr auto get_from_table(Table&& table, Variant const& var, Variants const& ... vars) {
   return get_from_table(table[var.index()], vars...);
 }
-//
-//std::invoke_result_t<Visitor,
-//                     variant_stg_alternative_t<0, std::decay_t<Variants>>&&...>
+
+template<class T> // TODO: костыль
+using variant_index_t = value_holder_index<0>;
 
 template<typename Visitor, typename... Variants>
 constexpr decltype(auto) visit_stg(Visitor&& vis, Variants&& ... vars) {
   return get_from_table(stg_table_impl<sizeof...(Variants) == 1,
-                                       void,
+                                       std::invoke_result_t<Visitor,
+                                                            variant_index_t<std::decay_t<Variants>> ...>,
                                        Visitor, 0,
                                        Variants&& ...>::make_table(std::index_sequence<>{},
                                                                    variant_stg_indexes_t<std::decay_t<get_nth_type_t<0,
@@ -189,3 +190,6 @@ constexpr decltype(auto) visit_stg(Visitor&& vis, Variants&& ... vars) {
                         vars...)(std::forward<Visitor>(vis),
                                  std::forward<Variants>(vars)...);
 }
+
+template<typename... Ts>
+using variant_dtor_base_t = variant_dtor_base<variant_traits<Ts...>::trivial::dtor, Ts...>;

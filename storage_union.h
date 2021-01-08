@@ -1,4 +1,5 @@
 #pragma once
+#include "variant_traits.h"
 
 struct variant_dummy_t {};
 inline constexpr variant_dummy_t variant_dummy;

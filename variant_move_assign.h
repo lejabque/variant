@@ -2,10 +2,8 @@
 #include "variant_move_ctor.h"
 
 template<bool is_trivial, typename... Ts>
-struct variant_move_assign_base
-    : variant_move_ctor_base<(std::is_trivially_move_constructible_v<Ts>&& ...), Ts...> {
-  using base = variant_move_ctor_base<(std::is_trivially_move_constructible_v<Ts>&& ...),
-                                      Ts...>;
+struct variant_move_assign_base : variant_move_ctor_base_t<Ts...> {
+  using base = variant_move_ctor_base_t<Ts...>;
   using base::base;
   constexpr variant_move_assign_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_move_assign_base(variant_move_assign_base const&) = default;
@@ -19,10 +17,8 @@ struct variant_move_assign_base
 };
 
 template<typename... Ts>
-struct variant_move_assign_base<false, Ts...>
-    : variant_move_ctor_base<(std::is_trivially_move_constructible_v<Ts>&& ...), Ts...> {
-  using base = variant_move_ctor_base<(std::is_trivially_move_constructible_v<Ts>&& ...),
-                                      Ts...>;
+struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> {
+  using base = variant_move_ctor_base_t<Ts...>;
   using base::base;
   constexpr variant_move_assign_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_move_assign_base(variant_move_assign_base const&) = default;
@@ -47,7 +43,7 @@ struct variant_move_assign_base<false, Ts...>
           if constexpr (this_index_v == other_index_v) {
             get_stg<this_index_v>(this->storage) = std::move(get_stg<other_index_v>(other.storage));
           } else {
-           if constexpr (this_index_v != variant_npos) {
+            if constexpr (this_index_v != variant_npos) {
               this->destroy_stg(this_index_v);
             }
             try {
@@ -66,6 +62,9 @@ struct variant_move_assign_base<false, Ts...>
 
   ~variant_move_assign_base() = default;
 };
+
+template<typename... Ts>
+using variant_move_assign_base_t = variant_move_assign_base<variant_traits<Ts...>::trivial::move_assign, Ts...>;
 
 // TODO: проблемы с implicit instantiation of undefined template
 template<bool flag, typename... Ts>

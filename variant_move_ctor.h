@@ -2,9 +2,8 @@
 #include "variant_dtor.h"
 
 template<bool is_trivial, typename... Ts>
-struct variant_move_ctor_base
-    : variant_dtor_base<(std::is_trivially_destructible_v<Ts>&& ...), Ts...> {
-  using base = variant_dtor_base<(std::is_trivially_destructible_v<Ts>&& ...), Ts...>;
+struct variant_move_ctor_base : variant_dtor_base_t<Ts...> {
+  using base = variant_dtor_base_t<Ts...>;
   using base::base;
   constexpr variant_move_ctor_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_move_ctor_base(variant_move_ctor_base const&) = default;
@@ -19,9 +18,8 @@ struct variant_move_ctor_base
 };
 
 template<typename... Ts>
-struct variant_move_ctor_base<false, Ts...>
-    : variant_dtor_base<(std::is_trivially_destructible_v<Ts>&& ...), Ts...> {
-  using base = variant_dtor_base<(std::is_trivially_destructible_v<Ts>&& ...), Ts...>;
+struct variant_move_ctor_base<false, Ts...> : variant_dtor_base_t<Ts...> {
+  using base = variant_dtor_base_t<Ts...>;
   using base::base;
   constexpr variant_move_ctor_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_move_ctor_base(variant_move_ctor_base const&) = default;
@@ -52,3 +50,6 @@ struct variant_move_ctor_base<false, Ts...>
 
   ~variant_move_ctor_base() = default;
 };
+
+template<typename... Ts>
+using variant_move_ctor_base_t = variant_move_ctor_base<variant_traits<Ts...>::trivial::move_ctor, Ts...>;

@@ -2,11 +2,8 @@
 #include "variant_move_assign.h"
 
 template<bool is_trivial, typename... Ts>
-struct variant_copy_ctor_base
-    : variant_move_assign_base<((std::is_trivially_move_constructible_v<Ts>
-        && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>) && ...), Ts...> {
-  using base = variant_move_assign_base<((std::is_trivially_move_constructible_v<Ts>
-      && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>) && ...), Ts...>;
+struct variant_copy_ctor_base : variant_move_assign_base_t<Ts...> {
+  using base = variant_move_assign_base_t<Ts...>;
   using base::base;
   constexpr variant_copy_ctor_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
 
@@ -21,11 +18,8 @@ struct variant_copy_ctor_base
 };
 
 template<typename... Ts>
-struct variant_copy_ctor_base<false, Ts...>
-    : variant_move_assign_base<((std::is_trivially_move_constructible_v<Ts>
-        && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>) && ...), Ts...> {
-  using base = variant_move_assign_base<((std::is_trivially_move_constructible_v<Ts>
-      && std::is_trivially_move_assignable_v<Ts> && std::is_trivially_destructible_v<Ts>) && ...), Ts...>;
+struct variant_copy_ctor_base<false, Ts...> : variant_move_assign_base_t<Ts...> {
+  using base = variant_move_assign_base_t<Ts...>;
   using base::base;
   constexpr variant_copy_ctor_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_copy_ctor_base(variant_copy_ctor_base&& other) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) = default;
@@ -57,3 +51,6 @@ struct variant_copy_ctor_base<false, Ts...>
 
   ~variant_copy_ctor_base() = default;
 };
+
+template<typename... Ts>
+using variant_copy_ctor_base_t = variant_copy_ctor_base<variant_traits<Ts...>::trivial::copy_ctor, Ts...>;

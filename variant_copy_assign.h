@@ -2,10 +2,8 @@
 #include "variant_copy_ctor.h"
 
 template<bool is_trivial, typename... Ts>
-struct variant_copy_assign_base
-    : variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Ts>&& ...), Ts...> {
-  using base = variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Ts>&& ...),
-                                      Ts...>;
+struct variant_copy_assign_base : variant_copy_ctor_base_t<Ts...> {
+  using base = variant_copy_ctor_base_t<Ts...>;
   using base::base;
   constexpr variant_copy_assign_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_copy_assign_base(variant_copy_assign_base const&) = default;
@@ -19,10 +17,8 @@ struct variant_copy_assign_base
 };
 
 template<typename... Ts>
-struct variant_copy_assign_base<false, Ts...>
-    : variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Ts>&& ...), Ts...> {
-  using base = variant_copy_ctor_base<(std::is_trivially_copy_constructible_v<Ts>&& ...),
-                                      Ts...>;
+struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> {
+  using base = variant_copy_ctor_base_t<Ts...>;
   using base::base;
   constexpr variant_copy_assign_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_copy_assign_base(variant_copy_assign_base const&) = default;
@@ -71,6 +67,9 @@ struct variant_copy_assign_base<false, Ts...>
 
   ~variant_copy_assign_base() = default;
 };
+
+template<typename... Ts>
+using variant_copy_assign_base_t = variant_copy_assign_base<variant_traits<Ts...>::trivial::copy_assign, Ts...>;
 
 // TODO: проблемы с implicit instantiation of undefined template
 template<bool flag, typename... Ts>
