@@ -26,7 +26,7 @@ struct variant {
   }
 
   template<typename U, typename... Args, std::enable_if_t<
-      cnt_type_v<U, Ts...> == 1 && std::is_constructible_v<U, Args...>, int> = 0>
+      exactly_once_v<U, Ts...> && std::is_constructible_v<U, Args...>, int> = 0>
   constexpr explicit variant(in_place_type_t<U> in_place_flag, Args&& ...args)
       : storage(in_place_flag, std::forward<Args>(args)...) {}
 
@@ -41,7 +41,7 @@ struct variant {
           && !std::is_same_v<std::decay_t<T>, variant>
           && !is_specialization<T, in_place_type_t>::value
           && !is_size_spec<T, in_place_index_t>::value
-          && exactly_once<find_overload_t<T, Ts...>, Ts...>::value
+          && exactly_once_v<find_overload_t<T, Ts...>, Ts...>
           && std::is_constructible_v<find_overload_t<T, Ts...>, T>, int> = 0>
   constexpr variant(T&& t) noexcept(std::is_nothrow_constructible_v<find_overload_t<T, Ts...>, T>)
       : storage(in_place_type_t<find_overload_t<T, Ts...>>(), std::forward<T>(t)) {}
@@ -51,7 +51,7 @@ struct variant {
           && !std::is_same_v<std::decay_t<T>, variant>
           && !is_specialization<T, in_place_type_t>::value
           && !is_size_spec<T, in_place_index_t>::value
-          && exactly_once<find_overload_t<T, Ts...>, Ts...>::value
+          && exactly_once_v<find_overload_t<T, Ts...>, Ts...>
           && std::is_constructible_v<find_overload_t<T, Ts...>, T>, int> = 0>
   variant& operator=(T&& t) noexcept(std::is_nothrow_constructible_v<find_overload_t<T, Ts...>, T>) {
     using Type = find_overload_t<T, Ts...>;
@@ -92,10 +92,10 @@ struct variant {
   friend constexpr types_at_t<ind, Types...> const& get(variant<Types...> const& v);
 
   template<typename Target, typename... Types>
-  friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>& get(variant<Types...>& v);
+  friend constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target>& get(variant<Types...>& v);
 
   template<typename Target, typename... Types>
-  friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target> const& get(variant<Types...> const& v);
+  friend constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target> const& get(variant<Types...> const& v);
 
   template<size_t ind, typename... Types>
   friend constexpr types_at_t<ind, Types...>* get_if(variant<Types...>* v);
@@ -104,15 +104,15 @@ struct variant {
   friend constexpr types_at_t<ind, Types...> const* get_if(variant<Types...> const* v);
 
   template<typename Target, typename... Types>
-  friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>* get_if(variant<Types...>* v);
+  friend constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target>* get_if(variant<Types...>* v);
 
   template<typename Target, typename... Types>
-  friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1,
+  friend constexpr std::enable_if_t<exactly_once_v<Target, Types...>,
                                     Target> const* get_if(variant<Types...> const* v);
 
   template<typename Target, typename... Types>
-  friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, bool>
-  holds_alternative(variant<Types...> const& v);
+  friend constexpr std::enable_if_t<exactly_once_v<Target, Types...>,
+                                    bool> holds_alternative(variant<Types...> const& v);
 
  private:
   variant_storage<Ts...> storage;
@@ -135,7 +135,7 @@ constexpr types_at_t<ind, Types...> const& get(variant<Types...> const& v) {
 }
 
 template<typename Target, typename... Types>
-constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>& get(variant<Types...>& v) {
+constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target>& get(variant<Types...>& v) {
   if (type_index_v<Target, Types...> != v.index()) {
     throw bad_variant_access();
   }
@@ -143,7 +143,7 @@ constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>& get(varia
 }
 
 template<typename Target, typename... Types>
-constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target> const& get(variant<Types...> const& v) {
+constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target> const& get(variant<Types...> const& v) {
   if (type_index_v<Target, Types...> != v.index()) {
     throw bad_variant_access();
   }
@@ -167,7 +167,7 @@ constexpr types_at_t<ind, Types...> const* get_if(variant<Types...> const* v) {
 }
 
 template<typename Target, typename... Types>
-constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>* get_if(variant<Types...>* v) {
+constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target>* get_if(variant<Types...>* v) {
   if (type_index_v<Target, Types...> != v->index()) {
     return nullptr;
   }
@@ -175,7 +175,7 @@ constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>* get_if(va
 }
 
 template<typename Target, typename... Types>
-constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target> const* get_if(variant<Types...> const* v) {
+constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target> const* get_if(variant<Types...> const* v) {
   if (type_index_v<Target, Types...> != v->index()) {
     return nullptr;
   }
@@ -183,7 +183,7 @@ constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target> const* get
 }
 
 template<typename Target, typename... Types>
-constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, bool> holds_alternative(variant<Types...> const& v) {
+constexpr std::enable_if_t<exactly_once_v<Target, Types...>, bool> holds_alternative(variant<Types...> const& v) {
   return type_index_v<Target, Types...> == v.index();
 }
 

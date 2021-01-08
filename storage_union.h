@@ -244,7 +244,6 @@ struct storage_indexes<const storage_union<Ts...>> {
 template<class T>
 using storage_indexes_t = typename storage_indexes<T>::type;
 
-
 template<size_t Index>
 struct value_holder_index {
   static constexpr size_t value = Index;

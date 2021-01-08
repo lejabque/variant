@@ -22,36 +22,33 @@ struct type_index_impl<false, Target, T, Ts...> {
 };
 
 template<typename Target, typename T, typename... Ts>
-static constexpr size_t type_index_v = type_index_impl<std::is_same_v<T, Target>, Target, Ts...>::ind;
+inline constexpr size_t type_index_v = type_index_impl<std::is_same_v<T, Target>, Target, Ts...>::ind;
 
-template<size_t I, class T>
+template<size_t I, typename T>
 struct variant_alternative;
 
-template<size_t I, template<typename...> class variant, typename... Ts>
+template<size_t I, template<typename...> typename variant, typename... Ts>
 struct variant_alternative<I, variant<Ts...>> {
   using type = types_at_t<I, Ts...>;
 };
 
-template<size_t I, template<typename...> class variant, typename... Ts>
+template<size_t I, template<typename...> typename variant, typename... Ts>
 struct variant_alternative<I, const variant<Ts...>> {
   using type = const types_at_t<I, Ts...>;
 };
 
-template<size_t I, template<typename...> class variant, typename... Ts>
+template<size_t I, template<typename...> typename variant, typename... Ts>
 struct variant_alternative<I, volatile variant<Ts...>> {
   using type = volatile types_at_t<I, Ts...>;
 };
 
-template<size_t I, template<typename...> class variant, typename... Ts>
+template<size_t I, template<typename...> typename variant, typename... Ts>
 struct variant_alternative<I, const volatile variant<Ts...>> {
   using type = const volatile types_at_t<I, Ts...>;
 };
 
-template<size_t I, class T>
+template<size_t I, typename T>
 using variant_alternative_t = typename variant_alternative<I, T>::type;
-
-template<typename Target, typename... Ts>
-static constexpr size_t cnt_type_v = (std::is_same_v<Ts, Target> + ...);
 
 template<typename T>
 struct find_overload_array { T x[1]; };
@@ -69,7 +66,6 @@ struct fun<U, T, ind, std::enable_if_t<(!std::is_same_v<std::decay_t<T>, bool> |
   T operator()(T);
 };
 
-
 template<typename U, typename IndexSequence, typename... Ts>
 struct find_overload;
 
@@ -83,12 +79,12 @@ template<typename U, typename... Ts>
 using find_overload_t = typename std::invoke_result_t<find_overload<U, std::index_sequence_for<Ts...>,
                                                                     Ts...>, U>;
 
-template<class T>
+template<typename T>
 struct in_place_type_t {
   explicit in_place_type_t() = default;
 };
 
-template<class T>
+template<typename T>
 inline constexpr in_place_type_t<T> in_place_type{};
 
 template<size_t I>
@@ -99,20 +95,17 @@ struct in_place_index_t {
 template<size_t I>
 inline constexpr in_place_index_t<I> in_place_index{};
 
-template<typename T, typename... Types>
-struct exactly_once {
-  static constexpr bool value = (std::is_same_v<T, Types> +  ...) == 1;
-};
+template<typename T, typename... Ts>
+inline constexpr bool exactly_once_v = (std::is_same_v<T, Ts> +  ...) == 1;
 
-template<class T, template<class...> class Template>
+template<typename T, template<typename...> typename Template>
 struct is_specialization : std::false_type {};
 
-template<template<class...> class Template, class... Args>
+template<template<typename...> typename Template, typename... Args>
 struct is_specialization<Template<Args...>, Template> : std::true_type {};
 
-template<class T, template<size_t...> class Template>
+template<typename T, template<size_t...> typename Template>
 struct is_size_spec : std::false_type {};
 
-template<template<size_t...> class Template, size_t... Args>
+template<template<size_t...> typename Template, size_t... Args>
 struct is_size_spec<Template<Args...>, Template> : std::true_type {};
-//static_assert(std::is_same_v<long, find_overload_v<int, float, long, double>>);
