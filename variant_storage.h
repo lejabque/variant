@@ -38,7 +38,7 @@ struct variant_storage : variant_copy_assign_base_t<Ts...>,
   constexpr variant_storage& operator=(variant_storage&&) noexcept(std::is_nothrow_move_assignable_v<base>) = default;
 
   template<size_t I, class... Args>
-  get_nth_type_t<I, Ts...>& emplace(Args&& ...args) {
+  types_at_t<I, Ts...>& emplace(Args&& ...args) {
     if (this->index_ != variant_npos) {
       this->destroy_stg(this->index_);
     }

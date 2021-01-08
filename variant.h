@@ -31,7 +31,7 @@ struct variant {
       : storage(in_place_flag, std::forward<Args>(args)...) {}
 
   template<size_t I, typename... Args, std::enable_if_t<
-      I < sizeof...(Ts) && std::is_constructible_v<get_nth_type_t<I, Ts...>, Args...>, int> = 0>
+      I < sizeof...(Ts) && std::is_constructible_v<types_at_t<I, Ts...>, Args...>, int> = 0>
   constexpr explicit variant(in_place_index_t<I> in_place_flag, Args&& ...args)
       : storage(in_place_flag, std::forward<Args>(args)...) {
   }
@@ -55,11 +55,11 @@ struct variant {
           && std::is_constructible_v<find_overload_t<T, Ts...>, T>, int> = 0>
   variant& operator=(T&& t) noexcept(std::is_nothrow_constructible_v<find_overload_t<T, Ts...>, T>) {
     using Type = find_overload_t<T, Ts...>;
-    if (this->index() == get_index_of_type_v<Type, Ts...>) {
-      get<get_index_of_type_v<Type, Ts...>>(*this) = std::forward<T>(t);
+    if (this->index() == type_index_v<Type, Ts...>) {
+      get<type_index_v<Type, Ts...>>(*this) = std::forward<T>(t);
     } else {
       if constexpr (std::is_nothrow_constructible_v<Type, T> || !std::is_nothrow_move_constructible_v<Type>) {
-        this->template emplace<get_index_of_type_v<Type, Ts...>>(std::forward<T>(t));
+        this->template emplace<type_index_v<Type, Ts...>>(std::forward<T>(t));
       } else {
         this->operator=(variant(std::forward<T>(t)));
       }
@@ -68,13 +68,13 @@ struct variant {
   }
 
   template<size_t I, class... Args>
-  get_nth_type_t<I, Ts...>& emplace(Args&& ...args) {
+  types_at_t<I, Ts...>& emplace(Args&& ...args) {
     return storage.template emplace<I>(std::forward<Args>(args)...);
   }
 
   template<typename T, class... Args>
   T& emplace(Args&& ...args) {
-    return storage.template emplace<get_index_of_type_v<T, Ts...>>(std::forward<Args>(args)...);
+    return storage.template emplace<type_index_v<T, Ts...>>(std::forward<Args>(args)...);
   }
 
   constexpr size_t index() const noexcept {
@@ -86,10 +86,10 @@ struct variant {
   }
 
   template<size_t ind, typename... Types>
-  friend constexpr get_nth_type_t<ind, Types...>& get(variant<Types...>& v);
+  friend constexpr types_at_t<ind, Types...>& get(variant<Types...>& v);
 
   template<size_t ind, typename... Types>
-  friend constexpr get_nth_type_t<ind, Types...> const& get(variant<Types...> const& v);
+  friend constexpr types_at_t<ind, Types...> const& get(variant<Types...> const& v);
 
   template<typename Target, typename... Types>
   friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>& get(variant<Types...>& v);
@@ -98,10 +98,10 @@ struct variant {
   friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target> const& get(variant<Types...> const& v);
 
   template<size_t ind, typename... Types>
-  friend constexpr get_nth_type_t<ind, Types...>* get_if(variant<Types...>* v);
+  friend constexpr types_at_t<ind, Types...>* get_if(variant<Types...>* v);
 
   template<size_t ind, typename... Types>
-  friend constexpr get_nth_type_t<ind, Types...> const* get_if(variant<Types...> const* v);
+  friend constexpr types_at_t<ind, Types...> const* get_if(variant<Types...> const* v);
 
   template<typename Target, typename... Types>
   friend constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>* get_if(variant<Types...>* v);
@@ -119,7 +119,7 @@ struct variant {
 };
 
 template<size_t ind, typename... Types>
-constexpr get_nth_type_t<ind, Types...>& get(variant<Types...>& v) {
+constexpr types_at_t<ind, Types...>& get(variant<Types...>& v) {
   if (ind != v.index()) {
     throw bad_variant_access();
   }
@@ -127,7 +127,7 @@ constexpr get_nth_type_t<ind, Types...>& get(variant<Types...>& v) {
 }
 
 template<size_t ind, typename... Types>
-constexpr get_nth_type_t<ind, Types...> const& get(variant<Types...> const& v) {
+constexpr types_at_t<ind, Types...> const& get(variant<Types...> const& v) {
   if (ind != v.index()) {
     throw bad_variant_access();
   }
@@ -136,7 +136,7 @@ constexpr get_nth_type_t<ind, Types...> const& get(variant<Types...> const& v) {
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>& get(variant<Types...>& v) {
-  if (get_index_of_type_v<Target, Types...> != v.index()) {
+  if (type_index_v<Target, Types...> != v.index()) {
     throw bad_variant_access();
   }
   return get_stg<Target>(v.storage.storage);
@@ -144,14 +144,14 @@ constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>& get(varia
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target> const& get(variant<Types...> const& v) {
-  if (get_index_of_type_v<Target, Types...> != v.index()) {
+  if (type_index_v<Target, Types...> != v.index()) {
     throw bad_variant_access();
   }
   return get_stg<Target>(v.storage.storage);
 }
 
 template<size_t ind, typename... Types>
-constexpr get_nth_type_t<ind, Types...>* get_if(variant<Types...>* v) {
+constexpr types_at_t<ind, Types...>* get_if(variant<Types...>* v) {
   if (ind != v->index()) {
     return nullptr;
   }
@@ -159,7 +159,7 @@ constexpr get_nth_type_t<ind, Types...>* get_if(variant<Types...>* v) {
 }
 
 template<size_t ind, typename... Types>
-constexpr get_nth_type_t<ind, Types...> const* get_if(variant<Types...> const* v) {
+constexpr types_at_t<ind, Types...> const* get_if(variant<Types...> const* v) {
   if (ind != v->index()) {
     return nullptr;
   }
@@ -168,7 +168,7 @@ constexpr get_nth_type_t<ind, Types...> const* get_if(variant<Types...> const* v
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>* get_if(variant<Types...>* v) {
-  if (get_index_of_type_v<Target, Types...> != v->index()) {
+  if (type_index_v<Target, Types...> != v->index()) {
     return nullptr;
   }
   return &get_stg<Target>(v->storage.storage);
@@ -176,7 +176,7 @@ constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target>* get_if(va
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target> const* get_if(variant<Types...> const* v) {
-  if (get_index_of_type_v<Target, Types...> != v->index()) {
+  if (type_index_v<Target, Types...> != v->index()) {
     return nullptr;
   }
   return &get_stg<Target>(v->storage.storage);
@@ -184,7 +184,7 @@ constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, Target> const* get
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<cnt_type_v<Target, Types...> == 1, bool> holds_alternative(variant<Types...> const& v) {
-  return get_index_of_type_v<Target, Types...> == v.index();
+  return type_index_v<Target, Types...> == v.index();
 }
 
 template<class T>
@@ -197,22 +197,6 @@ template<class... Types>
 struct variant_size<const variant<Types...>> : std::integral_constant<size_t, sizeof...(Types)> {};
 
 template<class T> inline constexpr size_t variant_size_v = variant_size<T>::value;
-
-template<size_t I, class T>
-struct variant_alternative;
-
-template<size_t I, typename... Ts>
-struct variant_alternative<I, variant<Ts...>> {
-  using type = get_nth_type_t<I, Ts...>;
-};
-
-template<size_t I, typename... Ts>
-struct variant_alternative<I, const variant<Ts...>> {
-  using type = const get_nth_type_t<I, Ts...>;
-};
-
-template<size_t I, class T>
-using variant_alternative_t = typename variant_alternative<I, T>::type;
 
 template<class T>
 struct variant_indexes;
@@ -250,7 +234,7 @@ struct table_impl {
                    Visitor,
                    Current + 1,
                    Variants...>::make_table(std::index_sequence<Prefix..., VariantIndexes>{},
-                                            variant_indexes_t<std::decay_t<get_nth_type_t<
+                                            variant_indexes_t<std::decay_t<types_at_t<
                                                 Current + 1,
                                                 Variants...>>>{})...
     );
@@ -276,9 +260,10 @@ constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
                                    std::invoke_result_t<Visitor, variant_alternative_t<0, std::decay_t<Variants>>...>,
                                    Visitor, 0,
                                    Variants&& ...>::make_table(std::index_sequence<>{},
-                                                               variant_indexes_t<std::decay_t<get_nth_type_t<0,
-                                                                                                             Variants...>>>{}),
+                                                               variant_indexes_t<std::decay_t<types_at_t<0,
+                                                                                                         Variants...>>>{}),
                         vars...)(std::forward<Visitor>(vis),
                                  std::forward<Variants>(vars)...);
 }
+
 

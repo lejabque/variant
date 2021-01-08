@@ -21,7 +21,7 @@ struct variant_dtor_base {
   template<typename U, typename... Args>
   constexpr explicit variant_dtor_base(in_place_type_t<U> in_place_flag, Args&& ... args)
       : storage(in_place_flag, std::forward<Args>(args)...),
-        index_(get_index_of_type_v<U, Ts...>) {}
+        index_(type_index_v<U, Ts...>) {}
 
   template<size_t I, typename... Args>
   constexpr explicit variant_dtor_base(in_place_index_t<I> in_place_flag, Args&& ... args)
@@ -56,7 +56,7 @@ struct variant_dtor_base<false, Ts...> {
   template<typename U, typename... Args>
   constexpr explicit variant_dtor_base(in_place_type_t<U> in_place_flag, Args&& ... args)
       : storage(in_place_flag, std::forward<Args>(args)...),
-        index_(get_index_of_type_v<U, Ts...>) {}
+        index_(type_index_v<U, Ts...>) {}
 
   template<size_t I, typename... Args>
   constexpr explicit variant_dtor_base(in_place_index_t<I> in_place_flag, Args&& ... args)
@@ -107,12 +107,12 @@ template<class T>
 using variant_stg_indexes_t = typename variant_stg_indexes<T>::type;
 
 template<size_t ind, bool flag, template<bool, typename> typename base, typename... Ts>
-constexpr get_nth_type_t<ind, Ts...>& get(base<flag, Ts...>& v) {
+constexpr types_at_t<ind, Ts...>& get(base<flag, Ts...>& v) {
   return get_stg<ind>(v.storage);
 }
 
 template<size_t ind, bool flag, template<bool, typename> typename base, typename... Ts>
-constexpr get_nth_type_t<ind, Ts...> const& get(base<flag, Ts...> const& v) {
+constexpr types_at_t<ind, Ts...> const& get(base<flag, Ts...> const& v) {
   return get_stg<ind>(v.storage);
 }
 
@@ -136,7 +136,7 @@ struct stg_table_impl {
                        Visitor,
                        Current + 1,
                        Variants...>::make_table(std::index_sequence<Prefix..., VariantIndexes>{},
-                                                variant_stg_indexes_t<std::decay_t<get_nth_type_t<
+                                                variant_stg_indexes_t<std::decay_t<types_at_t<
                                                     Current + 1,
                                                     Variants...>>>{})...);
   }
@@ -172,8 +172,8 @@ constexpr decltype(auto) visit_stg(Visitor&& vis, Variants&& ... vars) {
                                                             variant_index_t<std::decay_t<Variants>> ...>,
                                        Visitor, 0,
                                        Variants&& ...>::make_table(std::index_sequence<>{},
-                                                                   variant_stg_indexes_t<std::decay_t<get_nth_type_t<0,
-                                                                                                                     Variants...>>>{}),
+                                                                   variant_stg_indexes_t<std::decay_t<types_at_t<0,
+                                                                                                                 Variants...>>>{}),
                         vars...)(std::forward<Visitor>(vis),
                                  std::forward<Variants>(vars)...);
 }

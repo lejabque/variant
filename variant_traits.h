@@ -5,7 +5,7 @@
 template<typename... Ts>
 struct variant_traits {
   struct noexcept_value {
-    static constexpr bool default_ctor = (std::is_nothrow_default_constructible_v<get_nth_type_t<0, Ts...>>);
+    static constexpr bool default_ctor = (std::is_nothrow_default_constructible_v<types_at_t<0, Ts...>>);
     static constexpr bool move_assign = ((std::is_nothrow_move_constructible_v<Ts>
         && std::is_nothrow_move_assignable_v<Ts>) && ...);
     static constexpr bool move_ctor = (std::is_nothrow_move_constructible_v<Ts> && ...);
@@ -25,7 +25,7 @@ struct variant_traits {
 
 template<typename... Ts>
 struct enable_bases
-    : enable_default_ctor<std::is_default_constructible_v<get_nth_type_t<0, Ts...>>>,
+    : enable_default_ctor<std::is_default_constructible_v<types_at_t<0, Ts...>>>,
       enable_copy_ctor<(std::is_copy_constructible_v<Ts> && ...)>,
       enable_move_ctor<(std::is_move_constructible_v<Ts> && ...)>,
       enable_copy_assign<((std::is_copy_constructible_v<Ts>

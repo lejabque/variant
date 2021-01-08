@@ -201,7 +201,7 @@ auto& get_stg_stg(storage_union<T, Ts...>& storage) {
 }
 
 template<size_t ind, typename T, typename... Ts>
-constexpr get_nth_type_t<ind, T, Ts...> const& get_stg(storage_union<T, Ts...> const& storage) {
+constexpr types_at_t<ind, T, Ts...> const& get_stg(storage_union<T, Ts...> const& storage) {
   if constexpr (ind == 0) {
     return storage.obj;
   } else {
@@ -210,8 +210,8 @@ constexpr get_nth_type_t<ind, T, Ts...> const& get_stg(storage_union<T, Ts...> c
 }
 
 template<size_t ind, typename... Ts>
-constexpr get_nth_type_t<ind, Ts...>& get_stg(storage_union<Ts...>& storage) {
-  return const_cast<get_nth_type_t<ind, Ts...>&>(get_stg<ind, Ts...>(std::as_const(storage)));
+constexpr types_at_t<ind, Ts...>& get_stg(storage_union<Ts...>& storage) {
+  return const_cast<types_at_t<ind, Ts...>&>(get_stg<ind, Ts...>(std::as_const(storage)));
 }
 
 template<typename Target, typename T, typename... Ts>

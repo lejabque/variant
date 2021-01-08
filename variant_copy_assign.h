@@ -44,8 +44,8 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
           if constexpr (this_index_v == other_index_v) {
             get_stg<this_index_v>(this->storage) = get_stg<other_index_v>(other.storage);
           } else {
-            if constexpr(std::is_nothrow_copy_constructible_v<get_nth_type_t<other_index_v, Ts...>>
-                || !std::is_nothrow_move_constructible_v<get_nth_type_t<other_index_v, Ts...>>) {
+            if constexpr(std::is_nothrow_copy_constructible_v<types_at_t<other_index_v, Ts...>>
+                || !std::is_nothrow_move_constructible_v<types_at_t<other_index_v, Ts...>>) {
               if constexpr (this_index_v != variant_npos) {
                 this->destroy_stg(this_index_v);
               }
