@@ -52,31 +52,36 @@ static constexpr size_t cnt_type_v = cnt_type<Target, Ts...>::cnt;
 
 // https://en.cppreference.com/w/cpp/types/type_identity since C++20 😢
 
-template<bool is_bool, typename... Ts>
+template<typename T>
+struct Arr { T x[1]; };
+
+template<typename U, typename... Ts>
 struct find_overload_impl;
 
-template<bool is_bool, typename T, typename... Ts>
-struct find_overload_impl<is_bool, T, Ts...> : find_overload_impl<is_bool, Ts...> {
-  using find_overload_impl<is_bool, Ts...>::operator();
+template<typename U, typename T, typename... Ts>
+struct find_overload_impl<U, T, Ts...> : find_overload_impl<U, Ts...> {
+  using find_overload_impl<U, Ts...>::operator();
 
-  template<typename U = T>
-  std::enable_if_t<!std::is_same_v<std::decay_t<T>, bool> || is_bool, U> operator()(T value) {}
+  template<typename E = T>
+  std::enable_if_t<std::is_same_v<void, std::void_t<decltype(Arr<E>{{std::declval<U>()}})>>,
+                   E> operator()(T value) {}
 };
 
-template<bool is_bool, typename T>
-struct find_overload_impl<is_bool, T> {
-  template<typename U = T>
-  std::enable_if_t<!std::is_same_v<std::decay_t<T>, bool> || is_bool, U> operator()(T value) {}
+template<typename U, typename T>
+struct find_overload_impl<U, T> {
+  template<typename E = T>
+  std::enable_if_t<std::is_same_v<void, std::void_t<decltype(Arr<E>{{std::declval<U>()}})>>, E> operator()(T value) {}
 };
 
 template<typename U, typename... Types>
-using find_overload_t = typename std::invoke_result_t<find_overload_impl<std::is_same_v<std::decay_t<U>, bool>,
+using find_overload_t = typename std::invoke_result_t<find_overload_impl<U,
                                                                          Types...>, U>;
 
 template<class T>
 struct in_place_type_t {
   explicit in_place_type_t() = default;
 };
+
 template<class T>
 inline constexpr in_place_type_t<T> in_place_type{};
 

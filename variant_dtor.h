@@ -133,7 +133,7 @@ template<typename Visitor, typename... Variants>
 struct stg_table_impl_last {
   template<size_t... Is>
   static constexpr auto get_func(std::index_sequence<Is...>) {
-    return +[](Visitor&& vis, Variants... vars) {
+    return [](Visitor&& vis, Variants... vars) {
       return vis(value_holder_index<Is>{}...);
     };
   }
