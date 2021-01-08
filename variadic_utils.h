@@ -56,26 +56,32 @@ static constexpr size_t cnt_type_v = (std::is_same_v<Ts, Target> + ...);
 template<typename T>
 struct find_overload_array { T x[1]; };
 
-template<typename U, typename T, typename = void>
+template<typename U, typename T, size_t ind, typename = void>
 struct fun {
   T operator()();
 };
 
-template<typename U, typename T>
-struct fun<U, T, std::enable_if_t<(!std::is_same_v<std::decay_t<T>, bool> || std::is_same_v<std::decay_t<U>, bool>)
+template<typename U, typename T, size_t ind>
+struct fun<U, T, ind, std::enable_if_t<(!std::is_same_v<std::decay_t<T>, bool> || std::is_same_v<std::decay_t<U>, bool>)
                                            && std::is_same_v<void,
                                                              std::void_t<decltype(find_overload_array<T>{
                                                                  {std::declval<U>()}})>>>> {
   T operator()(T);
 };
 
-template<typename U, typename... Ts>
-struct find_overload : fun<U, Ts> ... {
-  using fun<U, Ts>::operator()...;
+
+template<typename U, typename IndexSequence, typename... Ts>
+struct find_overload;
+
+// индексы, чтобы различать базы с одинаковыми типами
+template<typename U, size_t... Is, typename... Ts>
+struct find_overload<U, std::index_sequence<Is...>, Ts...> : fun<U, Ts, Is> ... {
+  using fun<U, Ts, Is>::operator()...;
 };
 
 template<typename U, typename... Ts>
-using find_overload_t = typename std::invoke_result_t<find_overload<U, Ts...>, U>;
+using find_overload_t = typename std::invoke_result_t<find_overload<U, std::index_sequence_for<Ts...>,
+                                                                    Ts...>, U>;
 
 template<class T>
 struct in_place_type_t {
