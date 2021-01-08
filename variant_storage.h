@@ -8,8 +8,7 @@ struct variant_storage : variant_copy_assign_base_t<Ts...>,
                          enable_bases<Ts...> {
   using base = variant_copy_assign_base_t<Ts...>;
   constexpr variant_storage() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
-  void swap(variant_storage& other) noexcept(((std::is_nothrow_move_constructible_v<Ts> &&
-      std::is_nothrow_swappable_v<Ts>) && ...)) {
+  void swap(variant_storage& other) noexcept(variant_traits<Ts...>::noexcept_value::swap) {
     if (this->index_ == variant_npos && other.index_ == variant_npos) {
       return;
     }
@@ -34,10 +33,10 @@ struct variant_storage : variant_copy_assign_base_t<Ts...>,
         enable_bases<Ts...>{} {}
 
   constexpr variant_storage(variant_storage const&) = default;
-  constexpr variant_storage(variant_storage&&) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) = default;
+  constexpr variant_storage(variant_storage&&) noexcept(std::is_nothrow_move_constructible_v<base>) = default;
+
   constexpr variant_storage& operator=(variant_storage const&) = default;
-  constexpr variant_storage& operator=(variant_storage&&) noexcept(((std::is_nothrow_move_constructible_v<Ts>
-      && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
+  constexpr variant_storage& operator=(variant_storage&&) noexcept(std::is_nothrow_move_assignable_v<base>) = default;
 
   template<size_t I, class... Args>
   get_nth_type_t<I, Ts...>& emplace(Args&& ...args) {

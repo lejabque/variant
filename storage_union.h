@@ -12,8 +12,7 @@ struct value_holder {
   constexpr value_holder(value_holder&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
 
   constexpr value_holder& operator=(value_holder const&) = default;
-  constexpr value_holder& operator=(value_holder&&) noexcept((
-      std::is_nothrow_move_constructible_v<T> && std::is_nothrow_move_assignable_v<T>)) = default;
+  constexpr value_holder& operator=(value_holder&&) noexcept(std::is_nothrow_move_assignable_v<T>) = default;
 // TODO: noexcept of move
   template<typename... Args>
   constexpr explicit value_holder(in_place_index_t<0>, Args&& ... args)
@@ -61,8 +60,7 @@ struct value_holder<false, T> {
   constexpr value_holder(value_holder const&) = default;
   constexpr value_holder(value_holder&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
   constexpr value_holder& operator=(value_holder const&) = default;
-  constexpr value_holder& operator=(value_holder&&) noexcept((
-      std::is_nothrow_move_constructible_v<T> && std::is_nothrow_move_assignable_v<T>)) = default;
+  constexpr value_holder& operator=(value_holder&&) noexcept(std::is_nothrow_move_assignable_v<T>) = default;
 
   static constexpr void construct_value_holder(value_holder* holder, value_holder const& other) {
     new(&holder->obj) T(*reinterpret_cast<T const*>(&other.obj));
@@ -109,11 +107,12 @@ union storage_union<> {
 
 template<typename T, typename... Ts>
 union storage_union<T, Ts...> {
+  using value_holder_t = value_holder<std::is_trivially_destructible_v<T>, T>;
   constexpr explicit storage_union(variant_dummy_t) noexcept
       : dummy() {};
 
   constexpr storage_union()
-  noexcept(std::is_nothrow_default_constructible_v<value_holder<std::is_trivially_destructible_v<T>, T>>)
+  noexcept(std::is_nothrow_default_constructible_v<value_holder_t>)
       : obj() {};
 
   template<typename U, typename... Args>
@@ -144,7 +143,7 @@ union storage_union<T, Ts...> {
   template<size_t I>
   void copy_stg(storage_union const& other) {
     if constexpr (I == 0) {
-      value_holder<std::is_trivially_destructible_v<T>, T>::construct_value_holder(&obj, other.obj);
+      value_holder_t::construct_value_holder(&obj, other.obj);
     } else {
       stg.template copy_stg<I - 1>(other.stg);
     }
@@ -162,7 +161,7 @@ union storage_union<T, Ts...> {
   template<size_t I>
   constexpr void move_stg(storage_union&& other) {
     if constexpr (I == 0) {
-      value_holder<std::is_trivially_destructible_v<T>, T>::construct_value_holder(&obj, std::move(other.obj));
+      value_holder_t::construct_value_holder(&obj, std::move(other.obj));
     } else {
       stg.template move_stg<I - 1>(std::move(other.stg));
     }
@@ -171,14 +170,14 @@ union storage_union<T, Ts...> {
   template<size_t I, class... Args>
   void emplace_stg(Args&& ... args) {
     if constexpr (I == 0) {
-      new(&obj) value_holder<std::is_trivially_destructible_v<T>, T>(in_place_index_t<0>(),
-                                                                     std::forward<Args>(args)...);
+      new(&obj) value_holder_t(in_place_index_t<0>(),
+                               std::forward<Args>(args)...);
     } else {
       stg.template emplace_stg<I - 1>(std::forward<Args>(args)...);
     }
   }
 
-  value_holder<std::is_trivially_destructible_v<T>, T> obj;
+  value_holder_t obj;
   storage_union<Ts...> stg;
   variant_dummy_t dummy;
 };

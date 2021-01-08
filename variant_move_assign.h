@@ -10,8 +10,8 @@ struct variant_move_assign_base : variant_move_ctor_base_t<Ts...> {
   constexpr variant_move_assign_base(variant_move_assign_base&&) noexcept(std::is_nothrow_move_constructible_v<base>) = default;
 
   constexpr variant_move_assign_base& operator=(variant_move_assign_base const&) = default;
-  constexpr variant_move_assign_base& operator=(variant_move_assign_base&&) noexcept(((
-      std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
+  constexpr variant_move_assign_base& operator=(variant_move_assign_base&&) noexcept(std::is_nothrow_move_assignable_v<
+      base>) = default;
 
   ~variant_move_assign_base() = default;
 };
@@ -26,8 +26,7 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
       base>) = default;
 
   constexpr variant_move_assign_base& operator=(variant_move_assign_base const&) = default;
-  constexpr variant_move_assign_base& operator=(variant_move_assign_base&& other) noexcept(((
-      std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) {
+  constexpr variant_move_assign_base& operator=(variant_move_assign_base&& other) noexcept(variant_traits<Ts...>::noexcept_value::move_assign) {
     if (this->index_ == variant_npos && other.index_ == variant_npos) {
       return *this;
     }

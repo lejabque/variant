@@ -7,12 +7,10 @@ struct variant_move_ctor_base : variant_dtor_base_t<Ts...> {
   using base::base;
   constexpr variant_move_ctor_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_move_ctor_base(variant_move_ctor_base const&) = default;
+  constexpr variant_move_ctor_base(variant_move_ctor_base&& other) noexcept(std::is_nothrow_move_constructible_v<base>) = default;
 
   constexpr variant_move_ctor_base& operator=(variant_move_ctor_base const&) = default;
-  constexpr variant_move_ctor_base& operator=(variant_move_ctor_base&&) noexcept(((
-      std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
-
-  constexpr variant_move_ctor_base(variant_move_ctor_base&& other) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) = default;
+  constexpr variant_move_ctor_base& operator=(variant_move_ctor_base&&) noexcept(std::is_nothrow_move_assignable_v<base>) = default;
 
   ~variant_move_ctor_base() = default;
 };
@@ -25,10 +23,9 @@ struct variant_move_ctor_base<false, Ts...> : variant_dtor_base_t<Ts...> {
   constexpr variant_move_ctor_base(variant_move_ctor_base const&) = default;
 
   constexpr variant_move_ctor_base& operator=(variant_move_ctor_base const&) = default;
-  constexpr variant_move_ctor_base& operator=(variant_move_ctor_base&&) noexcept(((
-      std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
+  constexpr variant_move_ctor_base& operator=(variant_move_ctor_base&&) noexcept(std::is_nothrow_move_assignable_v<base>) = default;
 
-  constexpr variant_move_ctor_base(variant_move_ctor_base&& other) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) {
+  constexpr variant_move_ctor_base(variant_move_ctor_base&& other) noexcept(variant_traits<Ts...>::noexcept_value::move_ctor) {
     this->index_ = other.index_;
     if (this->index_ != variant_npos) {
       this->move_stg(this->index_, std::move(other.storage));

@@ -14,16 +14,14 @@ struct bad_variant_access : std::exception {
 template<typename... Ts>
 struct variant {
 
-  constexpr variant() noexcept(std::is_nothrow_default_constructible_v<get_nth_type_t<0, Ts...>>) = default;
+  constexpr variant() noexcept(variant_traits<Ts...>::noexcept_value::default_ctor) = default;
   constexpr variant(variant const&) = default;
-  constexpr variant(variant&&) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) = default;
+  constexpr variant(variant&&) noexcept(variant_traits<Ts...>::noexcept_value::move_ctor) = default;
 
   constexpr variant& operator=(variant const&) = default;
-  constexpr variant& operator=(variant&&) noexcept(((std::is_nothrow_move_constructible_v<Ts>
-      && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
+  constexpr variant& operator=(variant&&) noexcept(variant_traits<Ts...>::noexcept_value::move_assign) = default;
 
-  void swap(variant& other) noexcept(((std::is_nothrow_move_constructible_v<Ts> &&
-      std::is_nothrow_swappable_v<Ts>) && ...)) {
+  void swap(variant& other) noexcept(variant_traits<Ts...>::noexcept_value::swap) {
     storage.swap(other.storage);
   }
 

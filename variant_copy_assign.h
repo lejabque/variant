@@ -7,11 +7,12 @@ struct variant_copy_assign_base : variant_copy_ctor_base_t<Ts...> {
   using base::base;
   constexpr variant_copy_assign_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_copy_assign_base(variant_copy_assign_base const&) = default;
-  constexpr variant_copy_assign_base(variant_copy_assign_base&& other) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) = default;
+  constexpr variant_copy_assign_base(variant_copy_assign_base&& other) noexcept(std::is_nothrow_move_constructible_v<
+      base>) = default;
 
   constexpr variant_copy_assign_base& operator=(variant_copy_assign_base const&) = default;
-  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) noexcept(((
-      std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
+  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) noexcept(std::is_nothrow_move_assignable_v<
+      base>) = default;
 
   ~variant_copy_assign_base() = default;
 };
@@ -22,6 +23,9 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
   using base::base;
   constexpr variant_copy_assign_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_copy_assign_base(variant_copy_assign_base const&) = default;
+  constexpr variant_copy_assign_base(variant_copy_assign_base&& other) noexcept(std::is_nothrow_move_constructible_v<
+      base>) = default;
+
   constexpr variant_copy_assign_base& operator=(variant_copy_assign_base const& other) {
     if (this->index_ == variant_npos && other.index_ == variant_npos) {
       // If both *this and rhs are valueless by exception, does nothing
@@ -60,10 +64,7 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
     visit_stg(visitor, *this, other);
     return *this;
   };
-  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) noexcept(((
-      std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
-
-  constexpr variant_copy_assign_base(variant_copy_assign_base&& other) noexcept((std::is_nothrow_move_constructible_v<Ts> && ...)) = default;
+  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) noexcept(std::is_nothrow_move_assignable_v<base>) = default;
 
   ~variant_copy_assign_base() = default;
 };
