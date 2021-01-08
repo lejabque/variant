@@ -13,7 +13,7 @@ struct value_holder {
 
   constexpr value_holder& operator=(value_holder const&) = default;
   constexpr value_holder& operator=(value_holder&&) noexcept(std::is_nothrow_move_assignable_v<T>) = default;
-// TODO: noexcept of move
+
   template<typename... Args>
   constexpr explicit value_holder(in_place_index_t<0>, Args&& ... args)
       : obj(std::forward<Args>(args)...) {}
@@ -48,8 +48,11 @@ struct value_holder {
   T obj;
 };
 
-// union не позволяет иметь дефолтный конструктор для non-trivial destructible типов
-// TODO: доделать конструкторы
+/*
+ * Union implicitly удаляет деструктор, если есть non-trivial destructible альтернатива
+ * А для non-trivial destructible дефолтный конструктор всё равно не может быть constexpr, потому что это non-literal типы
+ * Поэтому делаю aligned_storage+placement new
+*/
 template<typename T>
 struct value_holder<false, T> {
   using Type = T;
