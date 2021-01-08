@@ -98,11 +98,6 @@ struct variant_stg_indexes<base<flag, Ts...>> {
   using type = std::index_sequence_for<Ts...>;
 };
 
-template<bool flag, template<bool, typename> typename base, typename... Ts>
-struct variant_stg_indexes<const base<flag, Ts...>> {
-  using type = std::index_sequence_for<Ts...>;
-};
-
 template<class T>
 using variant_stg_indexes_t = typename variant_stg_indexes<T>::type;
 
@@ -153,13 +148,13 @@ struct stg_table_impl<true, R, Visitor, Current, Variants...> {
 };
 
 template<typename Table>
-constexpr auto get_from_table(Table&& table) {
+constexpr auto const& get_from_table(Table const& table) {
   return table;
 }
 
-template<typename Table, typename Variant, typename...Variants>
-constexpr auto get_from_table(Table&& table, Variant const& var, Variants const& ... vars) {
-  return get_from_table(table[var.index()], vars...);
+template<typename Table, typename... Is>
+constexpr auto const& get_from_table(Table const& table, size_t index, Is... indexes) {
+  return get_from_table(table[index], indexes...);
 }
 
 template<class T> // TODO: костыль
@@ -174,7 +169,7 @@ constexpr decltype(auto) visit_stg(Visitor&& vis, Variants&& ... vars) {
                                        Variants&& ...>::make_table(std::index_sequence<>{},
                                                                    variant_stg_indexes_t<std::decay_t<types_at_t<0,
                                                                                                                  Variants...>>>{}),
-                        vars...)(std::forward<Visitor>(vis),
+                        vars.index()...)(std::forward<Visitor>(vis),
                                  std::forward<Variants>(vars)...);
 }
 

@@ -109,3 +109,29 @@ struct is_size_spec : std::false_type {};
 
 template<template<size_t...> typename Template, size_t... Args>
 struct is_size_spec<Template<Args...>, Template> : std::true_type {};
+
+
+template<class T>
+struct variant_indexes;
+
+template<template <typename...> typename base, typename... Ts>
+struct variant_indexes<base<Ts...>> {
+using type = std::index_sequence_for<Ts...>;
+};
+
+template<class T>
+using variant_indexes_t = typename variant_indexes<T>::type;
+
+template<size_t index, bool empty, typename... Ts>
+struct variant_indexes_by_ind {
+  using type = std::index_sequence<>;
+};
+
+template<size_t index, typename... Ts>
+struct variant_indexes_by_ind<index, true, Ts...> {
+  using type = variant_indexes_t<std::decay_t<types_at_t<index, Ts...>>>;
+};
+
+template<size_t index, typename... Ts>
+using variant_indexes_by_ind_t = typename variant_indexes_by_ind<index, index < sizeof...(Ts), Ts...>::type;
+
