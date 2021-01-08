@@ -35,7 +35,7 @@ struct variant_copy_ctor_base<false, Ts...>
       std::is_nothrow_move_constructible_v<Ts> && std::is_nothrow_move_assignable_v<Ts>) && ...)) = default;
 
   // https://godbolt.org/z/rWvn4f - копи-конструктор для нетривиальных не constexpr
-  variant_copy_ctor_base(variant_copy_ctor_base const& other) : base(true) {
+  variant_copy_ctor_base(variant_copy_ctor_base const& other) : base(variant_dummy) {
     this->index_ = other.index_;
     if (this->index_ != variant_npos) {
       this->copy_stg(this->index_, other.storage);

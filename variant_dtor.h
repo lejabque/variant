@@ -7,7 +7,7 @@ inline constexpr size_t variant_npos = -1;
 template<bool is_trivial, typename... Ts>
 struct variant_dtor_base {
   constexpr variant_dtor_base() noexcept(std::is_nothrow_default_constructible_v<storage_union<Ts...>>) = default;
-  constexpr explicit variant_dtor_base(bool) noexcept: storage(false) {};
+  constexpr explicit variant_dtor_base(variant_dummy_t) noexcept: storage(variant_dummy) {};
 
   constexpr variant_dtor_base(variant_dtor_base const& other) = default;
   constexpr variant_dtor_base(variant_dtor_base&& other) noexcept = default;
@@ -40,7 +40,7 @@ struct variant_dtor_base {
 template<typename... Ts>
 struct variant_dtor_base<false, Ts...> {
   constexpr variant_dtor_base() noexcept(std::is_nothrow_default_constructible_v<storage_union<Ts...>>) = default;
-  constexpr explicit variant_dtor_base(bool) noexcept: storage(false) {};
+  constexpr explicit variant_dtor_base(variant_dummy_t) noexcept: storage(variant_dummy) {};
 
   constexpr variant_dtor_base(variant_dtor_base const& other) = default;
   constexpr variant_dtor_base(variant_dtor_base&& other) noexcept = default;
