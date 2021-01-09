@@ -1,5 +1,22 @@
 #pragma once
 
+template<typename T>
+struct in_place_type_t {
+  explicit in_place_type_t() = default;
+};
+
+template<typename T>
+inline constexpr in_place_type_t<T> in_place_type{};
+
+template<size_t I>
+struct in_place_index_t {
+  explicit in_place_index_t() = default;
+};
+
+template<size_t I>
+inline constexpr in_place_index_t<I> in_place_index{};
+
+namespace variant_utils {
 template<size_t ind, bool less, typename... Ts>
 struct types_at_impl {};
 
@@ -139,30 +156,17 @@ template<typename U, typename... Ts>
 using find_overload_t = typename std::invoke_result_t<find_overload<U, std::index_sequence_for<Ts...>,
                                                                     Ts...>, U>;
 
-template<typename T>
-struct in_place_type_t {
-  explicit in_place_type_t() = default;
-};
-
-template<typename T>
-inline constexpr in_place_type_t<T> in_place_type{};
-
-template<size_t I>
-struct in_place_index_t {
-  explicit in_place_index_t() = default;
-};
-
-template<size_t I>
-inline constexpr in_place_index_t<I> in_place_index{};
-
 template<typename T, typename... Ts>
 inline constexpr bool exactly_once_v = (std::is_same_v<T, Ts> +  ...) == 1;
 
 template<typename T, template<typename...> typename Template>
-struct is_specialization : std::false_type {};
+struct is_type_spec : std::false_type {};
 
 template<template<typename...> typename Template, typename... Args>
-struct is_specialization<Template<Args...>, Template> : std::true_type {};
+struct is_type_spec<Template<Args...>, Template> : std::true_type {};
+
+template<typename T, template<typename...> typename Template>
+inline constexpr bool is_type_spec_v = is_type_spec<T, Template>::value;
 
 template<typename T, template<size_t...> typename Template>
 struct is_size_spec : std::false_type {};
@@ -170,27 +174,6 @@ struct is_size_spec : std::false_type {};
 template<template<size_t...> typename Template, size_t... Args>
 struct is_size_spec<Template<Args...>, Template> : std::true_type {};
 
-template<class T>
-struct variant_indexes;
-
-template<template<typename...> typename base, typename... Ts>
-struct variant_indexes<base<Ts...>> {
-  using type = std::index_sequence_for<Ts...>;
-};
-
-template<class T>
-using variant_indexes_t = typename variant_indexes<T>::type;
-
-template<size_t index, bool empty, typename... Ts>
-struct variant_indexes_by_ind {
-  using type = std::index_sequence<>;
-};
-
-template<size_t index, typename... Ts>
-struct variant_indexes_by_ind<index, true, Ts...> {
-  using type = variant_indexes_t<std::decay_t<types_at_t<index, Ts...>>>;
-};
-
-template<size_t index, typename... Ts>
-using variant_indexes_by_ind_t = typename variant_indexes_by_ind<index, index < sizeof...(Ts), Ts...>::type;
-
+template<typename T, template<size_t...> typename Template>
+inline constexpr bool is_size_spec_v = is_size_spec<T, Template>::value;
+} // namespace variadic_utils

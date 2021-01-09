@@ -75,11 +75,10 @@ struct variant_dtor_base<false, Ts...> {
   }
 
   constexpr void destroy_stg() {
-    auto visiter = [](auto& this_value, auto this_index) {
+    visit_indexed([](auto& this_value, auto this_index) {
       using this_type = std::decay_t<decltype(this_value)>;
       this_value.~this_type();
-    };
-    visit_indexed(visiter, *this);
+    }, *this);
   }
 
   storage_t storage;

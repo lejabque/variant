@@ -21,7 +21,7 @@ constexpr decltype(auto) get(Variant&& v) {
 
 template<typename Target, typename Variant>
 constexpr decltype(auto) get(Variant&& v) {
-  return get<variant_type_index_v<Target, std::decay_t<Variant>>>(std::forward<Variant>(v));
+  return get<variant_utils::variant_type_index_v<Target, std::decay_t<Variant>>>(std::forward<Variant>(v));
 }
 
 template<typename... Ts>
@@ -40,35 +40,37 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
   constexpr variant& operator=(variant&&) noexcept(traits::noexcept_value::move_assign) = default;
 
   template<typename U, typename... Args, std::enable_if_t<
-      exactly_once_v<U, Ts...> && std::is_constructible_v<U, Args...>, int> = 0>
+      variant_utils::exactly_once_v<U, Ts...> && std::is_constructible_v<U, Args...>, int> = 0>
   constexpr explicit variant(in_place_type_t<U> in_place_flag, Args&& ...args)
       : base(in_place_flag, std::forward<Args>(args)...), enable_base{} {}
 
   template<size_t I, typename... Args, std::enable_if_t<
-      I < sizeof...(Ts) && std::is_constructible_v<types_at_t<I, Ts...>, Args...>, int> = 0>
+      I < sizeof...(Ts) && std::is_constructible_v<variant_utils::types_at_t<I, Ts...>, Args...>, int> = 0>
   constexpr explicit variant(in_place_index_t<I> in_place_flag, Args&& ...args)
       : base(in_place_flag, std::forward<Args>(args)...), enable_base{} {}
 
   template<typename T, std::enable_if_t<(sizeof...(Ts) > 0)
                                             && !std::is_same_v<std::decay_t<T>, variant>
-                                            && !is_specialization<T, in_place_type_t>::value
-                                            && !is_size_spec<T, in_place_index_t>::value
-                                            && std::is_constructible_v<find_overload_t<T, Ts...>, T>, int> = 0>
-  constexpr variant(T&& t) noexcept(std::is_nothrow_constructible_v<find_overload_t<T, Ts...>, T>)
-      : base(in_place_type_t<find_overload_t<T, Ts...>>(), std::forward<T>(t)), enable_base{} {}
+                                            && !variant_utils::is_type_spec_v<T, in_place_type_t>
+                                            && !variant_utils::is_size_spec_v<T, in_place_index_t>
+                                            && std::is_constructible_v<variant_utils::find_overload_t<T, Ts...>, T>,
+                                        int> = 0>
+  constexpr variant(T&& t) noexcept(std::is_nothrow_constructible_v<variant_utils::find_overload_t<T, Ts...>, T>)
+      : base(in_place_type_t<variant_utils::find_overload_t<T, Ts...>>(), std::forward<T>(t)), enable_base{} {}
 
   template<typename T, std::enable_if_t<(sizeof...(Ts) > 0)
                                             && !std::is_same_v<std::decay_t<T>, variant>
-                                            && std::is_assignable_v<find_overload_t<T, Ts...>&, T>
-                                            && std::is_constructible_v<find_overload_t<T, Ts...>, T>, int> = 0>
-  variant& operator=(T&& t) noexcept(std::is_nothrow_assignable_v<find_overload_t<T, Ts...>&, T>
-      && std::is_nothrow_constructible_v<find_overload_t<T, Ts...>, T>) {
-    using Target = find_overload_t<T, Ts...>;
-    if (this->index() == type_index_v<Target, Ts...>) {
-      get<type_index_v<Target, Ts...>>(*this) = std::forward<T>(t);
+                                            && std::is_assignable_v<variant_utils::find_overload_t<T, Ts...>&, T>
+                                            && std::is_constructible_v<variant_utils::find_overload_t<T, Ts...>, T>,
+                                        int> = 0>
+  variant& operator=(T&& t) noexcept(std::is_nothrow_assignable_v<variant_utils::find_overload_t<T, Ts...>&, T>
+      && std::is_nothrow_constructible_v<variant_utils::find_overload_t<T, Ts...>, T>) {
+    using Target = variant_utils::find_overload_t<T, Ts...>;
+    if (this->index() == variant_utils::type_index_v<Target, Ts...>) {
+      get<variant_utils::type_index_v<Target, Ts...>>(*this) = std::forward<T>(t);
     } else {
       if constexpr (std::is_nothrow_constructible_v<Target, T> || !std::is_nothrow_move_constructible_v<Target>) {
-        this->template emplace<type_index_v<Target, Ts...>>(std::forward<T>(t));
+        this->template emplace<variant_utils::type_index_v<Target, Ts...>>(std::forward<T>(t));
       } else {
         this->operator=(variant(std::forward<T>(t)));
       }
@@ -77,7 +79,7 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
   }
 
   template<size_t I, class... Args>
-  types_at_t<I, Ts...>& emplace(Args&& ...args) {
+  decltype(auto) emplace(Args&& ...args) {
     if (this->index_ != variant_npos) {
       this->destroy_stg();
     }
@@ -111,7 +113,7 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
 
   template<typename T, class... Args>
   T& emplace(Args&& ...args) {
-    return this->template emplace<type_index_v<T, Ts...>>(std::forward<Args>(args)...);
+    return this->template emplace<variant_utils::type_index_v<T, Ts...>>(std::forward<Args>(args)...);
   }
 
   constexpr size_t index() const noexcept {
@@ -138,19 +140,19 @@ constexpr auto get_if(variant<Types...> const* v) noexcept {
 
 template<typename Target, typename... Types>
 constexpr auto get_if(variant<Types...>* v) noexcept {
-  return v == nullptr || type_index_v<Target, Types...> != v->index() ? nullptr
-                                                                      : &get<type_index_v<Target, Types...>>(*v);
+  return v == nullptr || variant_utils::type_index_v<Target, Types...> != v->index() ?
+         nullptr : &get<variant_utils::type_index_v<Target, Types...>>(*v);
 }
 
 template<typename Target, typename... Types>
 constexpr auto get_if(variant<Types...> const* v) noexcept {
-  return v == nullptr || type_index_v<Target, Types...> != v->index() ? nullptr
-                                                                      : &get<type_index_v<Target, Types...>>(*v);
+  return v == nullptr || variant_utils::type_index_v<Target, Types...> != v->index() ?
+         nullptr : &get<variant_utils::type_index_v<Target, Types...>>(*v);
 }
 
 template<typename Target, typename... Types>
 constexpr bool holds_alternative(variant<Types...> const& v) {
-  return type_index_v<Target, Types...> == v.index();
+  return variant_utils::type_index_v<Target, Types...> == v.index();
 }
 
 template<typename T>
@@ -170,12 +172,12 @@ struct variant_alternative;
 
 template<size_t I, typename... Ts>
 struct variant_alternative<I, variant<Ts...>> {
-  using type = types_at_t<I, Ts...>;
+  using type = variant_utils::types_at_t<I, Ts...>;
 };
 
 template<size_t I, typename... Ts>
 struct variant_alternative<I, const variant<Ts...>> {
-  using type = const types_at_t<I, Ts...>;
+  using type = const variant_utils::types_at_t<I, Ts...>;
 };
 
 template<size_t I, typename T>
@@ -188,7 +190,8 @@ constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
   }
   return variant_utils::get_from_table(variant_utils::table_cache_t<false,
                                                                     std::invoke_result_t<Visitor,
-                                                                                         alternative_t<0, Variants>...>,
+                                                                                         variant_utils::alternative_t<0,
+                                                                                                                      Variants>...>,
                                                                     Visitor&&, Variants&& ...>::array,
                                        vars.index()...)(std::forward<Visitor>(vis),
                                                         std::forward<Variants>(vars)...);

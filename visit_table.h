@@ -52,7 +52,7 @@ struct table_cache<indexed, R, Visitor, CurrentLvl,
   static constexpr auto array = make_array(table_cache<indexed, R, Visitor, CurrentLvl + 1,
                                                        std::index_sequence<Prefix...,
                                                                            VariantIndexes>,
-                                                       alt_indexes_by_ind_t<CurrentLvl + 1,
+                                                       variant_utils::alt_indexes_by_ind_t<CurrentLvl + 1,
                                                                             Variants...>,
                                                        Variants...>::array...);
 };
