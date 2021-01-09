@@ -36,27 +36,25 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
       this->index_ = other.index_;
       return *this;
     }
-    auto visitor =
-        [this, &other](auto&& first, auto&& second, auto this_index, auto other_index) {
-          constexpr size_t this_index_v = decltype(this_index)::value;
-          constexpr size_t other_index_v = decltype(other_index)::value;
-          if constexpr (this_index_v == other_index_v) {
-            this->storage.template get_stg<this_index_v>() =
-                std::move(other.storage.template get_stg<other_index_v>());
-          } else {
-            if constexpr (this_index_v != variant_npos) {
-              this->destroy_stg();
-            }
-            try {
-              this->storage.template emplace_stg<other_index_v>(std::move(other.storage.template get_stg<other_index_v>()));
-            } catch (...) {
-              this->index_ = variant_npos;
-              throw;
-            }
-            this->index_ = other_index_v;
-          }
-        };
-    visit_indexed(visitor, *this, other);
+    visit_indexed([this, &other](auto&& first, auto&& second, auto this_index, auto other_index) {
+      constexpr size_t this_index_v = decltype(this_index)::value;
+      constexpr size_t other_index_v = decltype(other_index)::value;
+      if constexpr (this_index_v == other_index_v) {
+        this->storage.template get_stg<this_index_v>() =
+            std::move(other.storage.template get_stg<other_index_v>());
+      } else {
+        if constexpr (this_index_v != variant_npos) {
+          this->destroy_stg();
+        }
+        try {
+          this->storage.template emplace_stg<other_index_v>(std::move(other.storage.template get_stg<other_index_v>()));
+        } catch (...) {
+          this->index_ = variant_npos;
+          throw;
+        }
+        this->index_ = other_index_v;
+      }
+    }, *this, other);
     return *this;
   };
 

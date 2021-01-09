@@ -1,12 +1,12 @@
 #pragma once
 #include "variadic_utils.h"
 
+namespace variant_utils {
 template<size_t ind, typename base>
 constexpr decltype(auto) get_impl(base&& v) {
   return std::forward<base>(v).storage.template get_stg<ind>();
 }
 
-namespace variant_utils {
 template<typename T>
 using value_holder_zero = std::integral_constant<size_t, 0>;
 
