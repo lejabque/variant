@@ -27,17 +27,21 @@ struct table_cache;
 template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, typename... Variants>
 struct table_cache<false, R, Visitor, CurrentLvl,
                    std::index_sequence<Prefix...>, std::index_sequence<>, Variants...> {
-  static constexpr auto array = [](Visitor vis, Variants... vars) {
-    return vis(get_impl<Prefix>(static_cast<Variants>(vars))...);
-  };
+  static constexpr auto array() {
+    return [](Visitor vis, Variants... vars) {
+      return vis(get_impl<Prefix>(static_cast<Variants>(vars))...);
+    };
+  }
 };
 
 template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, typename... Variants>
 struct table_cache<true, R, Visitor, CurrentLvl,
                    std::index_sequence<Prefix...>, std::index_sequence<>, Variants...> {
-  static constexpr auto array = [](Visitor vis, Variants... vars) {
-    return vis(get_impl<Prefix>(static_cast<Variants>(vars))..., std::integral_constant<size_t, Prefix>{}...);
-  };
+  static constexpr auto array() {
+    return [](Visitor vis, Variants... vars) {
+      return vis(get_impl<Prefix>(static_cast<Variants>(vars))..., std::integral_constant<size_t, Prefix>{}...);
+    };
+  }
 };
 
 template<class... Args>
@@ -49,12 +53,14 @@ template<bool indexed, typename R, typename Visitor, size_t CurrentLvl,
     size_t... Prefix, size_t... VariantIndexes, typename... Variants>
 struct table_cache<indexed, R, Visitor, CurrentLvl,
                    std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>, Variants...> {
-  static constexpr auto array = make_array(table_cache<indexed, R, Visitor, CurrentLvl + 1,
-                                                       std::index_sequence<Prefix...,
-                                                                           VariantIndexes>,
-                                                       variant_utils::alt_indexes_by_ind_t<CurrentLvl + 1,
-                                                                            Variants...>,
-                                                       Variants...>::array...);
+  static constexpr auto array() {
+    return make_array(table_cache<indexed, R, Visitor, CurrentLvl + 1,
+                                  std::index_sequence<Prefix...,
+                                                      VariantIndexes>,
+                                  variant_utils::alt_indexes_by_ind_t<CurrentLvl + 1,
+                                                                      Variants...>,
+                                  Variants...>::array()...);
+  }
 };
 
 template<bool indexed, typename R, typename Visitor, typename... Variants>
@@ -66,9 +72,9 @@ template<typename Visitor, typename... Variants>
 constexpr decltype(auto) visit_indexed(Visitor&& vis, Variants&& ... vars) {
   return get_from_table(table_cache_t<true,
                                       std::invoke_result_t<Visitor,
-                                                           alternative_t<0, Variants>...,
+                                                           alternative_t<0, Variants&&>...,
                                                            value_holder_zero<Variants>...>,
-                                      Visitor&&, Variants&& ...>::array,
+                                      Visitor&&, Variants&& ...>::array(),
                         vars.index()...)(std::forward<Visitor>(vis),
                                          std::forward<Variants>(vars)...);
 }

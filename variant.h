@@ -187,8 +187,8 @@ constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
   return variant_utils::get_from_table(variant_utils::table_cache_t<false,
                                                                     std::invoke_result_t<Visitor,
                                                                                          variant_utils::alternative_t<0,
-                                                                                                                      Variants>...>,
-                                                                    Visitor&&, Variants&& ...>::array,
+                                                                                                                      Variants&&>...>,
+                                                                    Visitor&&, Variants&& ...>::array(),
                                        vars.index()...)(std::forward<Visitor>(vis),
                                                         std::forward<Variants>(vars)...);
 }
