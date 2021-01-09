@@ -29,6 +29,26 @@ struct variant_dtor_base {
       : storage(in_place_flag, std::forward<Args>(args)...),
         index_(I) {}
 
+  template<size_t I, class... Args>
+  decltype(auto) emplace(Args&& ...args) {
+    if (this->index_ != variant_npos) {
+      this->destroy_stg();
+    }
+    try {
+      this->storage.template emplace_stg<I>(std::forward<Args>(args)...);
+    } catch (...) {
+      this->index_ = variant_npos;
+      throw;
+    }
+    this->index_ = I;
+    return get_impl<I>(*this);
+  }
+
+  template<typename T, class... Args>
+  T& emplace(Args&& ...args) {
+    return this->template emplace<variant_utils::type_index_v<T, Ts...>>(std::forward<Args>(args)...);
+  }
+
   constexpr size_t index() const noexcept {
     return index_;
   }
@@ -74,11 +94,33 @@ struct variant_dtor_base<false, Ts...> {
     return index_;
   }
 
+  template<size_t I, class... Args>
+  decltype(auto) emplace(Args&& ...args) {
+    if (this->index_ != variant_npos) {
+      this->destroy_stg();
+    }
+    try {
+      this->storage.template emplace_stg<I>(std::forward<Args>(args)...);
+    } catch (...) {
+      this->index_ = variant_npos;
+      throw;
+    }
+    this->index_ = I;
+    return get_impl<I>(*this);
+  }
+
+  template<typename T, class... Args>
+  T& emplace(Args&& ...args) {
+    return this->template emplace<variant_utils::type_index_v<T, Ts...>>(std::forward<Args>(args)...);
+  }
+
   constexpr void destroy_stg() {
-    visit_indexed([](auto& this_value, auto this_index) {
-      using this_type = std::decay_t<decltype(this_value)>;
-      this_value.~this_type();
-    }, *this);
+    if (index_ != variant_npos) {
+      visit_indexed([](auto& this_value, auto this_index) {
+        using this_type = std::decay_t<decltype(this_value)>;
+        this_value.~this_type();
+      }, *this);
+    }
   }
 
   storage_t storage;

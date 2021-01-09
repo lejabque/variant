@@ -28,7 +28,7 @@ template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, type
 struct table_cache<false, R, Visitor, CurrentLvl,
                    std::index_sequence<Prefix...>, std::index_sequence<>, Variants...> {
   static constexpr auto array = [](Visitor vis, Variants... vars) {
-    return vis(get_impl<Prefix>(std::forward<Variants>(vars))...);
+    return vis(get_impl<Prefix>(static_cast<Variants>(vars))...);
   };
 };
 
@@ -36,7 +36,7 @@ template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, type
 struct table_cache<true, R, Visitor, CurrentLvl,
                    std::index_sequence<Prefix...>, std::index_sequence<>, Variants...> {
   static constexpr auto array = [](Visitor vis, Variants... vars) {
-    return vis(get_impl<Prefix>(std::forward<Variants>(vars))..., std::integral_constant<size_t, Prefix>{}...);
+    return vis(get_impl<Prefix>(static_cast<Variants>(vars))..., std::integral_constant<size_t, Prefix>{}...);
   };
 };
 

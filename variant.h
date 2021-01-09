@@ -32,6 +32,7 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
   using enable_base = variant_utils::enable_bases<Ts...>;
   using traits = variant_utils::variant_traits<Ts...>;
  public:
+  using base::emplace;
   constexpr variant() noexcept(traits::noexcept_value::default_ctor) = default;
   constexpr variant(variant const&) = default;
   constexpr variant(variant&&) noexcept(traits::noexcept_value::move_ctor) = default;
@@ -78,52 +79,37 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
     return *this;
   }
 
-  template<size_t I, class... Args>
-  decltype(auto) emplace(Args&& ...args) {
-    if (this->index_ != variant_npos) {
-      this->destroy_stg();
-    }
-    try {
-      this->storage.template emplace_stg<I>(std::forward<Args>(args)...);
-    } catch (...) {
-      this->index_ = variant_npos;
-      throw;
-    }
-    this->index_ = I;
-    return get<I>(*this);
-  }
-
   void swap(variant& other) noexcept(traits::noexcept_value::swap) {
     if (this->index_ == variant_npos && other.index_ == variant_npos) {
       return;
-    }
-    visit_indexed([this, &other](auto& this_value, auto& other_value, auto this_index, auto other_index) {
-      constexpr size_t this_index_v = decltype(this_index)::value;
-      constexpr size_t other_index_v = decltype(other_index)::value;
-      if constexpr(this_index_v == other_index_v) {
-        using std::swap;
-        swap(this_value, other_value);
-      } else {
-        if constexpr (this_index_v == variant_npos) {
-          this->template emplace<other_index_v>(std::move(other_value));
-          other.destroy_stg();
-          other.index_ = variant_npos;
-        } else if constexpr (other_index_v == variant_npos) {
-          other.template emplace<this_index_v>(std::move(this_value));
-          this->destroy_stg();
-          this->index_ = variant_npos;
+    } else if (this->index_ == variant_npos) {
+      visit_indexed([this](auto& other_value, auto other_index) {
+        constexpr size_t other_index_v = decltype(other_index)::value;
+        this->template emplace<other_index_v>(std::move(other_value));
+      }, other);
+      other.destroy_stg();
+      other.index_ = variant_npos;
+    } else if (other.index_ == variant_npos) {
+      visit_indexed([&other](auto& this_value, auto this_index) {
+        constexpr size_t this_index_v = decltype(this_index)::value;
+        other.template emplace<this_index_v>(std::move(this_value));
+      }, other);
+      this->destroy_stg();
+      this->index_ = variant_npos;
+    } else {
+      visit_indexed([this, &other](auto& this_value, auto& other_value, auto this_index, auto other_index) {
+        constexpr size_t this_index_v = decltype(this_index)::value;
+        constexpr size_t other_index_v = decltype(other_index)::value;
+        if constexpr(this_index_v == other_index_v) {
+          using std::swap;
+          swap(this_value, other_value);
         } else {
           auto tmp = std::move(other_value);
           other.template emplace<this_index_v>(std::move(this_value));
           this->template emplace<other_index_v>(std::move(tmp));
         }
-      }
-    }, *this, other);
-  }
-
-  template<typename T, class... Args>
-  T& emplace(Args&& ...args) {
-    return this->template emplace<variant_utils::type_index_v<T, Ts...>>(std::forward<Args>(args)...);
+      }, *this, other);
+    }
   }
 
   constexpr size_t index() const noexcept {
