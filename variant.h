@@ -123,7 +123,7 @@ constexpr types_at_t<ind, Types...>& get(variant<Types...>& v) {
   if (ind != v.index()) {
     throw bad_variant_access();
   }
-  return get_stg<ind>(v.storage.storage);
+  return v.storage.storage.template get_stg<ind>();
 }
 
 template<size_t ind, typename... Types>
@@ -131,23 +131,17 @@ constexpr types_at_t<ind, Types...> const& get(variant<Types...> const& v) {
   if (ind != v.index()) {
     throw bad_variant_access();
   }
-  return get_stg<ind>(v.storage.storage);
+  return v.storage.storage.template get_stg<ind>();
 }
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target>& get(variant<Types...>& v) {
-  if (type_index_v<Target, Types...> != v.index()) {
-    throw bad_variant_access();
-  }
-  return get_stg<Target>(v.storage.storage);
+  return get<type_index_v<Target, Types...>>(v);
 }
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target> const& get(variant<Types...> const& v) {
-  if (type_index_v<Target, Types...> != v.index()) {
-    throw bad_variant_access();
-  }
-  return get_stg<Target>(v.storage.storage);
+  return get<type_index_v<Target, Types...>>(v);
 }
 
 template<size_t ind, typename... Types>
@@ -155,7 +149,8 @@ constexpr types_at_t<ind, Types...>* get_if(variant<Types...>* v) {
   if (ind != v->index()) {
     return nullptr;
   }
-  return &get_stg<ind>(v->storage.storage);
+  return &v->storage.storage.template get_stg<ind>();
+//  return &get_stg<ind>(v->storage.storage);
 }
 
 template<size_t ind, typename... Types>
@@ -163,23 +158,17 @@ constexpr types_at_t<ind, Types...> const* get_if(variant<Types...> const* v) {
   if (ind != v->index()) {
     return nullptr;
   }
-  return &get_stg<ind>(v->storage.storage);
+  return &v->storage.storage.template get_stg<ind>();
 }
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target>* get_if(variant<Types...>* v) {
-  if (type_index_v<Target, Types...> != v->index()) {
-    return nullptr;
-  }
-  return &get_stg<Target>(v->storage.storage);
+  return v == nullptr? nullptr : &get<type_index_v<Target, Types...>>(*v);
 }
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target> const* get_if(variant<Types...> const* v) {
-  if (type_index_v<Target, Types...> != v->index()) {
-    return nullptr;
-  }
-  return &get_stg<Target>(v->storage.storage);
+  return v == nullptr ? nullptr : &get<type_index_v<Target, Types...>>(*v);
 }
 
 template<typename Target, typename... Types>
@@ -229,7 +218,10 @@ constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
   if ((vars.valueless_by_exception() || ...)) {
     throw bad_variant_access();
   }
-  return get_from_table(table_cache_t<false, std::invoke_result_t<Visitor,
-                                                                  alternative_t<0, Variants>...>, Visitor, Variants...>::array, vars.index()...)(std::forward<Visitor>(vis),
-                                                                                     std::forward<Variants>(vars)...);
+  return get_from_table(table_cache_t<false,
+                                      std::invoke_result_t<Visitor,
+                                                           alternative_t<0, Variants>...>,
+                                      Visitor&&,
+                                      Variants&& ...>::array, vars.index()...)(std::forward<Visitor>(vis),
+                                                                               std::forward<Variants>(vars)...);
 }

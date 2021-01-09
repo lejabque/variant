@@ -24,7 +24,80 @@ struct type_index_impl<false, Target, T, Ts...> {
 template<typename Target, typename T, typename... Ts>
 inline constexpr size_t type_index_v = type_index_impl<std::is_same_v<T, Target>, Target, Ts...>::ind;
 
+template<size_t I, typename T>
+struct alternative;
 
+template<size_t I, template<typename...> typename base, typename... Ts>
+struct alternative<I, base<Ts...>> {
+  using type = types_at_t<I, Ts...>;
+};
+
+template<size_t I, template<typename...> typename base, typename... Ts>
+struct alternative<I, base<Ts...>&&> {
+  using type = types_at_t<I, Ts...>&&;
+};
+
+template<size_t I, template<typename...> typename base, typename... Ts>
+struct alternative<I, base<Ts...>&> {
+  using type = types_at_t<I, Ts...>&;
+};
+
+template<size_t I, template<typename...> typename base, typename... Ts>
+struct alternative<I, base<Ts...> const&> {
+  using type = types_at_t<I, Ts...> const&;
+};
+
+template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>
+struct alternative<I, base<flag, Ts...>> {
+  using type = types_at_t<I, Ts...>;
+};
+
+template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>
+struct alternative<I, base<flag, Ts...>&&> {
+  using type = types_at_t<I, Ts...>&&;
+};
+
+template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>
+struct alternative<I, base<flag, Ts...>&> {
+  using type = types_at_t<I, Ts...>&;
+};
+
+template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>
+struct alternative<I, base<flag, Ts...> const&> {
+  using type = types_at_t<I, Ts...> const&;
+};
+
+template<size_t I, typename T>
+using alternative_t = typename alternative<I, T>::type;
+
+template<class T>
+struct alt_indexes;
+
+template<template<typename...> typename base, typename... Ts>
+struct alt_indexes<base<Ts...>> {
+  using type = std::index_sequence_for<Ts...>;
+};
+
+template<template<bool, typename...> typename base, bool flag, typename... Ts>
+struct alt_indexes<base<flag, Ts...>> {
+  using type = std::index_sequence_for<Ts...>;
+};
+
+template<class T>
+using alt_indexes_t = typename alt_indexes<std::decay_t<T>>::type;
+
+template<size_t index, bool empty, typename... Ts>
+struct alt_indexes_by_ind {
+  using type = std::index_sequence<>;
+};
+
+template<size_t index, typename... Ts>
+struct alt_indexes_by_ind<index, true, Ts...> {
+  using type = alt_indexes_t<std::decay_t<types_at_t<index, Ts...>>>;
+};
+
+template<size_t index, typename... Ts>
+using alt_indexes_by_ind_t = typename alt_indexes_by_ind<index, index < sizeof...(Ts), Ts...>::type;
 
 template<typename T>
 struct find_overload_array { T x[1]; };
@@ -86,13 +159,12 @@ struct is_size_spec : std::false_type {};
 template<template<size_t...> typename Template, size_t... Args>
 struct is_size_spec<Template<Args...>, Template> : std::true_type {};
 
-
 template<class T>
 struct variant_indexes;
 
-template<template <typename...> typename base, typename... Ts>
+template<template<typename...> typename base, typename... Ts>
 struct variant_indexes<base<Ts...>> {
-using type = std::index_sequence_for<Ts...>;
+  using type = std::index_sequence_for<Ts...>;
 };
 
 template<class T>

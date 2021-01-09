@@ -40,7 +40,7 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
           constexpr size_t this_index_v = decltype(this_index)::value;
           constexpr size_t other_index_v = decltype(other_index)::value;
           if constexpr (this_index_v == other_index_v) {
-            get_stg<this_index_v>(this->storage) = get_stg<other_index_v>(other.storage);
+            this->storage.template get_stg<this_index_v>() = other.storage.template get_stg<other_index_v>();
           } else {
             if constexpr(std::is_nothrow_copy_constructible_v<types_at_t<other_index_v, Ts...>>
                 || !std::is_nothrow_move_constructible_v<types_at_t<other_index_v, Ts...>>) {
@@ -48,7 +48,7 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
                 this->destroy_stg();
               }
               try {
-                this->storage.template emplace_stg<other_index_v>(get_stg<other_index_v>(other.storage));
+                this->storage.template emplace_stg<other_index_v>(other.storage.template get_stg<other_index_v>());
               } catch (...) {
                 this->index_ = variant_npos;
                 throw;
@@ -62,7 +62,8 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
     visit_indexed(visitor, *this, other);
     return *this;
   };
-  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) noexcept(std::is_nothrow_move_assignable_v<base>) = default;
+  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) noexcept(std::is_nothrow_move_assignable_v<
+      base>) = default;
 
   ~variant_copy_assign_base() = default;
 };

@@ -28,15 +28,19 @@ struct value_holder {
     swap(obj, other.obj);
   }
 
-  constexpr operator T&() {
+  constexpr T const& get_obj() const& noexcept {
     return obj;
   }
 
-  constexpr operator T() const {
+  constexpr T const&& get_obj() const&& noexcept {
     return obj;
   }
 
-  constexpr operator T const&() const {
+  constexpr T& get_obj()& noexcept {
+    return obj;
+  }
+
+  constexpr T&& get_obj()&& noexcept {
     return obj;
   }
 
@@ -82,16 +86,20 @@ struct value_holder<false, T> {
 
   ~value_holder() = default;
 
-  operator T&() {
-    return *reinterpret_cast<T*>(&obj);
-  }
-
-  operator T() const {
-    return *reinterpret_cast<T*>(&obj);
-  }
-
-  operator T const&() const {
+  constexpr T const& get_obj() const& noexcept {
     return *reinterpret_cast<T const*>(&obj);
+  }
+
+  constexpr T const&& get_obj() const&& noexcept {
+    return *reinterpret_cast<T const*>(&obj);
+  }
+
+  constexpr T& get_obj()& noexcept {
+    return *reinterpret_cast<T*>(&obj);
+  }
+
+  constexpr T&& get_obj()&& noexcept {
+    return *reinterpret_cast<T*>(&obj);
   }
 
   std::aligned_storage_t<sizeof(T), alignof(T)> obj;
@@ -102,18 +110,20 @@ union storage_union;
 
 template<>
 union storage_union<> {
+  using Type = variant_dummy_t;
   variant_dummy_t dummy;
 };
 
 template<typename T, typename... Ts>
 union storage_union<T, Ts...> {
+  using Type = T;
   using value_holder_t = value_holder<std::is_trivially_destructible_v<T>, T>;
   constexpr explicit storage_union(variant_dummy_t) noexcept
       : dummy() {};
 
   constexpr storage_union()
   noexcept(std::is_nothrow_default_constructible_v<value_holder_t>)
-      : obj() {};
+      : value() {};
 
   template<typename U, typename... Args>
   constexpr explicit storage_union(in_place_type_t<U> in_place_flag, Args&& ... args)
@@ -121,7 +131,7 @@ union storage_union<T, Ts...> {
 
   template<typename... Args>
   constexpr explicit storage_union(in_place_type_t<T> in_place_flag, Args&& ... args)
-      : obj(in_place_flag, std::forward<Args>(args)...) {}
+      : value(in_place_flag, std::forward<Args>(args)...) {}
 
   template<size_t I, typename... Args>
   constexpr explicit storage_union(in_place_index_t<I>, Args&& ... args)
@@ -129,12 +139,12 @@ union storage_union<T, Ts...> {
 
   template<typename... Args>
   constexpr explicit storage_union(in_place_index_t<0> in_place_flag, Args&& ... args)
-      : obj(in_place_type<T>, std::forward<Args>(args)...) {}
+      : value(in_place_type<T>, std::forward<Args>(args)...) {}
 
   template<size_t I>
   constexpr void destroy_stg() {
     if constexpr (I == 0) {
-      reinterpret_cast<T*>(&obj.obj)->~T();
+      reinterpret_cast<T*>(&value.obj)->~T();
     } else {
       stg.template destroy_stg<I - 1>();
     }
@@ -143,7 +153,7 @@ union storage_union<T, Ts...> {
   template<size_t I>
   void copy_stg(storage_union const& other) {
     if constexpr (I == 0) {
-      value_holder_t::construct_value_holder(&obj, other.obj);
+      value_holder_t::construct_value_holder(&value, other.value);
     } else {
       stg.template copy_stg<I - 1>(other.stg);
     }
@@ -152,7 +162,7 @@ union storage_union<T, Ts...> {
   template<size_t I>
   constexpr void move_stg(storage_union&& other) {
     if constexpr (I == 0) {
-      value_holder_t::construct_value_holder(&obj, std::move(other.obj));
+      value_holder_t::construct_value_holder(&value, std::move(other.value));
     } else {
       stg.template move_stg<I - 1>(std::move(other.stg));
     }
@@ -161,45 +171,85 @@ union storage_union<T, Ts...> {
   template<size_t I, class... Args>
   void emplace_stg(Args&& ... args) {
     if constexpr (I == 0) {
-      new(&obj) value_holder_t(in_place_type<T>,
-                               std::forward<Args>(args)...);
+      new(&value) value_holder_t(in_place_type<T>,
+                                 std::forward<Args>(args)...);
     } else {
       stg.template emplace_stg<I - 1>(std::forward<Args>(args)...);
     }
   }
 
-  value_holder_t obj;
+  constexpr storage_union<Ts...> const& get_stg() const& noexcept {
+    return stg;
+  }
+
+  constexpr storage_union<Ts...> const&& get_stg() const&& noexcept {
+    return stg;
+  }
+
+  constexpr storage_union<Ts...>& get_stg()& noexcept {
+    return stg;
+  }
+
+  constexpr storage_union<Ts...>&& get_stg()&& noexcept {
+    return stg;
+  }
+
+  constexpr T const& get_obj() const& noexcept {
+    return value.get_obj();
+  }
+
+  constexpr T const&& get_obj() const&& noexcept {
+    return value.get_obj();
+  }
+
+  constexpr T& get_obj()& noexcept {
+    return value.get_obj();
+  }
+
+  constexpr T&& get_obj()&& noexcept {
+    return value.get_obj();
+  }
+
+  template<size_t ind>
+  constexpr decltype(auto) get_stg() const {
+    if constexpr (ind == 0) {
+      return get_obj();
+    } else {
+      return stg.template get_stg<ind - 1>();
+    }
+  }
+
+  template<size_t ind>
+  constexpr decltype(auto) get_stg() {
+    if constexpr (ind == 0) {
+      return get_obj();
+    } else {
+      return stg.template get_stg<ind - 1>();
+    }
+  }
+
+  template<typename Target>
+  constexpr decltype(auto) get_stg() {
+    if constexpr (std::is_same_v<Target, T>) {
+      return get_obj();
+    } else {
+      return stg.template get_stg<Target>();
+    }
+  }
+
+  template<typename Target>
+  constexpr decltype(auto) get_stg() const {
+    if constexpr (std::is_same_v<Target, T>) {
+      return get_obj();
+    } else {
+      return stg.template get_stg<Target>();
+    }
+  }
+
+  value_holder_t value;
   storage_union<Ts...> stg;
   variant_dummy_t dummy;
 };
-
-template<size_t ind, typename T, typename... Ts>
-constexpr types_at_t<ind, T, Ts...> const& get_stg(storage_union<T, Ts...> const& storage) {
-  if constexpr (ind == 0) {
-    return storage.obj;
-  } else {
-    return get_stg<ind - 1, Ts...>(storage.stg);
-  }
-}
-
-template<size_t ind, typename... Ts>
-constexpr types_at_t<ind, Ts...>& get_stg(storage_union<Ts...>& storage) {
-  return const_cast<types_at_t<ind, Ts...>&>(get_stg<ind, Ts...>(std::as_const(storage)));
-}
-
-template<typename Target, typename T, typename... Ts>
-constexpr Target const& get_stg(storage_union<T, Ts...> const& storage) {
-  if constexpr (std::is_same_v<Target, T>) {
-    return storage.obj;
-  } else {
-    return get_stg<Target, Ts...>(storage.stg);
-  }
-}
-
-template<typename Target, typename... Ts>
-constexpr Target& get_stg(storage_union<Ts...>& storage) {
-  return const_cast<Target&>(get_stg<Target, Ts...>(std::as_const(storage)));
-}
 
 template<class T>
 struct storage_indexes;

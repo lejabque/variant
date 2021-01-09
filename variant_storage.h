@@ -55,7 +55,7 @@ struct variant_storage : variant_copy_assign_base_t<Ts...>,
       throw;
     }
     this->index_ = I;
-    return get_stg<I>(this->storage);
+    return this->storage.template get_stg<I>();
   }
   ~variant_storage() = default;
 };
