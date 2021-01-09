@@ -5,14 +5,17 @@
 #include <type_traits>
 #include <utility>
 
-#include "variant_storage.h"
+#include "variant_copy_assign.h"
 
 struct bad_variant_access : std::exception {
   const char* what() const noexcept override { return "bad_variant_access"; }
 };
 
 template<typename... Ts>
-struct variant {
+struct variant : variant_copy_assign_base_t<Ts...>,
+                 enable_bases<Ts...> {
+
+  using base = variant_copy_assign_base_t<Ts...>;
 
   constexpr variant() noexcept(variant_traits<Ts...>::noexcept_value::default_ctor) = default;
   constexpr variant(variant const&) = default;
@@ -21,20 +24,38 @@ struct variant {
   constexpr variant& operator=(variant const&) = default;
   constexpr variant& operator=(variant&&) noexcept(variant_traits<Ts...>::noexcept_value::move_assign) = default;
 
+//  void swap(variant& other) noexcept(variant_traits<Ts...>::noexcept_value::swap) {
+//    storage.swap(other.storage);
+//  }
   void swap(variant& other) noexcept(variant_traits<Ts...>::noexcept_value::swap) {
-    storage.swap(other.storage);
+    if (this->index_ == variant_npos && other.index_ == variant_npos) {
+      return;
+    }
+    if (this->index_ == other.index_) {
+      auto visiter = [](auto&& this_value, auto&& other_value, auto this_index, auto other_index) {
+        if constexpr (decltype(this_index)::value == decltype(other_index)::value) {
+          using std::swap;
+          swap(this_value, other_value);
+        }
+      };
+      visit_indexed(visiter, *this, other);
+      return;
+    }
+    variant tmp(std::move(other));
+    other = std::move(*this);
+    *this = std::move(tmp);
   }
 
   template<typename U, typename... Args, std::enable_if_t<
       exactly_once_v<U, Ts...> && std::is_constructible_v<U, Args...>, int> = 0>
   constexpr explicit variant(in_place_type_t<U> in_place_flag, Args&& ...args)
-      : storage(in_place_flag, std::forward<Args>(args)...) {}
+      : base(in_place_flag, std::forward<Args>(args)...),
+        enable_bases<Ts...>{} {}
 
   template<size_t I, typename... Args, std::enable_if_t<
       I < sizeof...(Ts) && std::is_constructible_v<types_at_t<I, Ts...>, Args...>, int> = 0>
   constexpr explicit variant(in_place_index_t<I> in_place_flag, Args&& ...args)
-      : storage(in_place_flag, std::forward<Args>(args)...) {
-  }
+      : base(in_place_flag, std::forward<Args>(args)...), enable_bases<Ts...>{} {}
 
   template<typename T, std::enable_if_t<
       (sizeof...(Ts) > 0)
@@ -44,7 +65,7 @@ struct variant {
           && exactly_once_v<find_overload_t<T, Ts...>, Ts...>
           && std::is_constructible_v<find_overload_t<T, Ts...>, T>, int> = 0>
   constexpr variant(T&& t) noexcept(std::is_nothrow_constructible_v<find_overload_t<T, Ts...>, T>)
-      : storage(in_place_type_t<find_overload_t<T, Ts...>>(), std::forward<T>(t)) {}
+      : base(in_place_type_t<find_overload_t<T, Ts...>>(), std::forward<T>(t)), enable_bases<Ts...>{} {}
 
   template<typename T, std::enable_if_t<
       (sizeof...(Ts) > 0)
@@ -69,16 +90,27 @@ struct variant {
 
   template<size_t I, class... Args>
   types_at_t<I, Ts...>& emplace(Args&& ...args) {
-    return storage.template emplace<I>(std::forward<Args>(args)...);
+    if (this->index_ != variant_npos) {
+      this->destroy_stg();
+    }
+    try {
+      this->storage.template emplace_stg<I>(std::forward<Args>(args)...);
+    } catch (...) {
+      this->index_ = variant_npos;
+      throw;
+    }
+    this->index_ = I;
+    return this->storage.template get_stg<I>();
+    // return this->.template emplace<I>(std::forward<Args>(args)...);
   }
 
   template<typename T, class... Args>
   T& emplace(Args&& ...args) {
-    return storage.template emplace<type_index_v<T, Ts...>>(std::forward<Args>(args)...);
+    return this->template emplace<type_index_v<T, Ts...>>(std::forward<Args>(args)...);
   }
 
   constexpr size_t index() const noexcept {
-    return storage.index_;
+    return this->index_;
   }
 
   constexpr bool valueless_by_exception() const noexcept {
@@ -114,8 +146,8 @@ struct variant {
   friend constexpr std::enable_if_t<exactly_once_v<Target, Types...>,
                                     bool> holds_alternative(variant<Types...> const& v);
 
- private:
-  variant_storage<Ts...> storage;
+// private:
+//  variant_storage<Ts...> storage;
 };
 
 template<size_t ind, typename... Types>
@@ -123,7 +155,7 @@ constexpr types_at_t<ind, Types...>& get(variant<Types...>& v) {
   if (ind != v.index()) {
     throw bad_variant_access();
   }
-  return v.storage.storage.template get_stg<ind>();
+  return v.storage.template get_stg<ind>();
 }
 
 template<size_t ind, typename... Types>
@@ -131,7 +163,7 @@ constexpr types_at_t<ind, Types...> const& get(variant<Types...> const& v) {
   if (ind != v.index()) {
     throw bad_variant_access();
   }
-  return v.storage.storage.template get_stg<ind>();
+  return v.storage.template get_stg<ind>();
 }
 
 template<typename Target, typename... Types>
@@ -149,7 +181,7 @@ constexpr types_at_t<ind, Types...>* get_if(variant<Types...>* v) {
   if (ind != v->index()) {
     return nullptr;
   }
-  return &v->storage.storage.template get_stg<ind>();
+  return &v->storage.template get_stg<ind>();
 //  return &get_stg<ind>(v->storage.storage);
 }
 
@@ -158,12 +190,12 @@ constexpr types_at_t<ind, Types...> const* get_if(variant<Types...> const* v) {
   if (ind != v->index()) {
     return nullptr;
   }
-  return &v->storage.storage.template get_stg<ind>();
+  return &v->storage.template get_stg<ind>();
 }
 
 template<typename Target, typename... Types>
 constexpr std::enable_if_t<exactly_once_v<Target, Types...>, Target>* get_if(variant<Types...>* v) {
-  return v == nullptr? nullptr : &get<type_index_v<Target, Types...>>(*v);
+  return v == nullptr ? nullptr : &get<type_index_v<Target, Types...>>(*v);
 }
 
 template<typename Target, typename... Types>

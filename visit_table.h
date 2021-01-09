@@ -1,9 +1,8 @@
 #pragma once
-#include "storage_union.h"
 #include "variadic_utils.h"
 
 template<typename T>
-using value_holder_zero = value_holder_index<0>;
+using value_holder_zero = std::integral_constant<size_t, 0>;
 
 template<size_t ind, typename base>
 constexpr decltype(auto) get(base&& v) {
@@ -36,20 +35,25 @@ template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, type
 struct table_cache<true, R, Visitor, CurrentLvl,
                    std::index_sequence<Prefix...>, std::index_sequence<>, Variants...> {
   static constexpr auto array = [](Visitor vis, Variants... vars) {
-    return vis(get<Prefix>(std::forward<Variants>(vars))..., value_holder_index<Prefix>{}...);
+    return vis(get<Prefix>(std::forward<Variants>(vars))..., std::integral_constant<size_t, Prefix>{}...);
   };
 };
+
+template<class... Args>
+constexpr std::array<typename std::common_type_t<Args...>, sizeof...(Args)> make_array(Args&& ... args) {
+  return {std::forward<Args>(args)...};
+}
 
 template<bool indexed, typename R, typename Visitor, size_t CurrentLvl,
     size_t... Prefix, size_t... VariantIndexes, typename... Variants>
 struct table_cache<indexed, R, Visitor, CurrentLvl,
                    std::index_sequence<Prefix...>, std::index_sequence<VariantIndexes...>, Variants...> {
-  static constexpr auto array = std::experimental::make_array(table_cache<indexed, R, Visitor, CurrentLvl + 1,
-                                                                          std::index_sequence<Prefix...,
-                                                                                              VariantIndexes>,
-                                                                          alt_indexes_by_ind_t<CurrentLvl + 1,
-                                                                                               Variants...>,
-                                                                          Variants...>::array...);
+  static constexpr auto array = make_array(table_cache<indexed, R, Visitor, CurrentLvl + 1,
+                                                       std::index_sequence<Prefix...,
+                                                                           VariantIndexes>,
+                                                       alt_indexes_by_ind_t<CurrentLvl + 1,
+                                                                            Variants...>,
+                                                       Variants...>::array...);
 };
 
 template<bool indexed, typename R, typename Visitor, typename... Variants>
