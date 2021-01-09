@@ -24,6 +24,17 @@ struct type_index_impl<false, Target, T, Ts...> {
 template<typename Target, typename T, typename... Ts>
 inline constexpr size_t type_index_v = type_index_impl<std::is_same_v<T, Target>, Target, Ts...>::ind;
 
+template<typename T, typename Base>
+struct variant_type_index;
+
+template<typename T, template<typename...> typename base, typename... Ts>
+struct variant_type_index<T, base<Ts...>> {
+  static constexpr size_t value = type_index_v<T, Ts...>;
+};
+
+template<typename Target, typename Variant>
+inline constexpr size_t variant_type_index_v = variant_type_index<Target, Variant>::value;
+
 template<size_t I, typename T>
 struct alternative;
 

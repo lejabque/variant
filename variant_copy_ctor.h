@@ -1,6 +1,7 @@
 #pragma once
 #include "variant_move_assign.h"
 
+namespace variant_utils {
 template<bool is_trivial, typename... Ts>
 struct variant_copy_ctor_base : variant_move_assign_base_t<Ts...> {
   using base = variant_move_assign_base_t<Ts...>;
@@ -26,7 +27,7 @@ struct variant_copy_ctor_base<false, Ts...> : variant_move_assign_base_t<Ts...> 
   variant_copy_ctor_base(variant_copy_ctor_base const& other) : base(variant_dummy) {
     this->index_ = other.index_;
     if (this->index_ != variant_npos) {
-    //  this->copy_stg(this->index_, other.storage);
+      //  this->copy_stg(this->index_, other.storage);
       auto visiter = [this, &other](auto const& other_value, auto other_index) {
         constexpr size_t other_index_v = decltype(other_index)::value;
         this->storage.template copy_stg<other_index_v>(other.storage);
@@ -45,3 +46,4 @@ struct variant_copy_ctor_base<false, Ts...> : variant_move_assign_base_t<Ts...> 
 
 template<typename... Ts>
 using variant_copy_ctor_base_t = variant_copy_ctor_base<variant_traits<Ts...>::trivial::copy_ctor, Ts...>;
+} // namespace variant_utils

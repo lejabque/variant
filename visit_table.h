@@ -1,13 +1,14 @@
 #pragma once
 #include "variadic_utils.h"
 
-template<typename T>
-using value_holder_zero = std::integral_constant<size_t, 0>;
-
 template<size_t ind, typename base>
-constexpr decltype(auto) get(base&& v) {
+constexpr decltype(auto) get_impl(base&& v) {
   return std::forward<base>(v).storage.template get_stg<ind>();
 }
+
+namespace variant_utils {
+template<typename T>
+using value_holder_zero = std::integral_constant<size_t, 0>;
 
 template<typename Table>
 constexpr auto const& get_from_table(Table const& table) {
@@ -27,7 +28,7 @@ template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, type
 struct table_cache<false, R, Visitor, CurrentLvl,
                    std::index_sequence<Prefix...>, std::index_sequence<>, Variants...> {
   static constexpr auto array = [](Visitor vis, Variants... vars) {
-    return vis(get<Prefix>(std::forward<Variants>(vars))...);
+    return vis(get_impl<Prefix>(std::forward<Variants>(vars))...);
   };
 };
 
@@ -35,7 +36,7 @@ template<typename R, typename Visitor, size_t CurrentLvl, size_t... Prefix, type
 struct table_cache<true, R, Visitor, CurrentLvl,
                    std::index_sequence<Prefix...>, std::index_sequence<>, Variants...> {
   static constexpr auto array = [](Visitor vis, Variants... vars) {
-    return vis(get<Prefix>(std::forward<Variants>(vars))..., std::integral_constant<size_t, Prefix>{}...);
+    return vis(get_impl<Prefix>(std::forward<Variants>(vars))..., std::integral_constant<size_t, Prefix>{}...);
   };
 };
 
@@ -71,3 +72,4 @@ constexpr decltype(auto) visit_indexed(Visitor&& vis, Variants&& ... vars) {
                         vars.index()...)(std::forward<Visitor>(vis),
                                          std::forward<Variants>(vars)...);
 }
+} // namespace variant_utils

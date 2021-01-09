@@ -4,6 +4,7 @@
 
 inline constexpr size_t variant_npos = -1;
 
+namespace variant_utils {
 template<bool is_trivial, typename... Ts>
 struct variant_dtor_base {
   using storage_t = storage_union<Ts...>;
@@ -87,3 +88,4 @@ struct variant_dtor_base<false, Ts...> {
 
 template<typename... Ts>
 using variant_dtor_base_t = variant_dtor_base<variant_traits<Ts...>::trivial::dtor, Ts...>;
+} // namespace variant_utils

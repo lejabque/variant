@@ -2,6 +2,7 @@
 #include "variadic_utils.h"
 #include "enable_ctor_base.h"
 
+namespace variant_utils {
 template<typename... Ts>
 struct variant_traits {
   struct noexcept_value {
@@ -33,3 +34,4 @@ struct enable_bases
       enable_move_assign<((std::is_move_constructible_v<Ts>
           && std::is_move_assignable_v<Ts>) && ...)> {
 };
+} // namespace variant_utils

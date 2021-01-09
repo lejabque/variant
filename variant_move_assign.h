@@ -1,6 +1,7 @@
 #pragma once
 #include "variant_move_ctor.h"
 
+namespace variant_utils {
 template<bool is_trivial, typename... Ts>
 struct variant_move_assign_base : variant_move_ctor_base_t<Ts...> {
   using base = variant_move_ctor_base_t<Ts...>;
@@ -64,3 +65,4 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
 
 template<typename... Ts>
 using variant_move_assign_base_t = variant_move_assign_base<variant_traits<Ts...>::trivial::move_assign, Ts...>;
+} // namespace variant_utils
