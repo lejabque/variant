@@ -26,7 +26,7 @@ struct variant_copy_ctor_base<false, Ts...> : variant_move_assign_base_t<Ts...> 
   constexpr variant_copy_ctor_base() = default;
 
   // https://godbolt.org/z/rWvn4f - копи-конструктор для нетривиальных не constexpr
-  variant_copy_ctor_base(variant_copy_ctor_base const& other) : base(variant_dummy) {
+  variant_copy_ctor_base(variant_copy_ctor_base const& other) {
     this->index_ = other.index_;
     if (this->index_ != variant_npos) {
       visit_indexed([this, &other](auto const& other_value, auto other_index) {

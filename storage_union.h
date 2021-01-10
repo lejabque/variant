@@ -1,9 +1,6 @@
 #pragma once
 #include "variant_traits.h"
 
-struct variant_dummy_t {};
-inline constexpr variant_dummy_t variant_dummy;
-
 template<bool is_trivial_dtor, typename T>
 struct value_holder {
   using Type = T;
@@ -106,23 +103,15 @@ struct value_holder<false, T> {
 };
 
 template<typename... Ts>
-union storage_union;
-
-template<>
-union storage_union<> {
-  using Type = variant_dummy_t;
-  variant_dummy_t dummy;
-};
+union storage_union {};
 
 template<typename T, typename... Ts>
 union storage_union<T, Ts...> {
   using Type = T;
   using value_holder_t = value_holder<std::is_trivially_destructible_v<T>, T>;
-  constexpr explicit storage_union(variant_dummy_t) noexcept
-      : dummy() {};
 
-  constexpr storage_union() noexcept(std::is_nothrow_default_constructible_v<value_holder_t>)
-      : value() {};
+  constexpr storage_union() noexcept
+      : stg() {};
 
   template<typename U, typename... Args>
   constexpr explicit storage_union(in_place_type_t<U> in_place_flag, Args&& ... args)
@@ -238,5 +227,4 @@ union storage_union<T, Ts...> {
 
   value_holder_t value;
   storage_union<Ts...> stg;
-  variant_dummy_t dummy;
 };

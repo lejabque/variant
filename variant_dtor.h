@@ -9,9 +9,6 @@ template<bool is_trivial, typename... Ts>
 struct variant_dtor_base {
   using storage_t = storage_union<Ts...>;
   constexpr variant_dtor_base() = default;
-  constexpr explicit variant_dtor_base(variant_dummy_t) noexcept(std::is_nothrow_constructible_v<storage_t,
-                                                                                                 variant_dummy_t>)
-      : storage(variant_dummy) {};
 
   constexpr variant_dtor_base(variant_dtor_base const& other) = default;
   constexpr variant_dtor_base(variant_dtor_base&& other) = default;
@@ -20,12 +17,15 @@ struct variant_dtor_base {
   constexpr variant_dtor_base& operator=(variant_dtor_base&&) = default;
 
   template<typename U, typename... Args>
-  constexpr explicit variant_dtor_base(in_place_type_t<U> in_place_flag, Args&& ... args)
+  constexpr explicit variant_dtor_base(in_place_type_t<U> in_place_flag,
+                                       Args&& ... args) noexcept(std::is_nothrow_constructible_v<U, Args...>)
       : storage(in_place_flag, std::forward<Args>(args)...),
         index_(type_index_v<U, Ts...>) {}
 
   template<size_t I, typename... Args>
-  constexpr explicit variant_dtor_base(in_place_index_t<I> in_place_flag, Args&& ... args)
+  constexpr explicit variant_dtor_base(in_place_index_t<I> in_place_flag,
+                                       Args&& ... args) noexcept(std::is_nothrow_constructible_v<types_at_t<I, Ts...>,
+                                                                                                 Args...>)
       : storage(in_place_flag, std::forward<Args>(args)...),
         index_(I) {}
 
@@ -57,9 +57,6 @@ template<typename... Ts>
 struct variant_dtor_base<false, Ts...> {
   using storage_t = storage_union<Ts...>;
   constexpr variant_dtor_base() = default;
-  constexpr explicit variant_dtor_base(variant_dummy_t) noexcept(std::is_nothrow_constructible_v<storage_t,
-                                                                                                 variant_dummy_t>)
-      : storage(variant_dummy) {};
 
   constexpr variant_dtor_base(variant_dtor_base const& other) = default;
   constexpr variant_dtor_base(variant_dtor_base&& other) = default;
@@ -68,12 +65,15 @@ struct variant_dtor_base<false, Ts...> {
   constexpr variant_dtor_base& operator=(variant_dtor_base&&) = default;
 
   template<typename U, typename... Args>
-  constexpr explicit variant_dtor_base(in_place_type_t<U> in_place_flag, Args&& ... args)
+  constexpr explicit variant_dtor_base(in_place_type_t<U> in_place_flag,
+                                       Args&& ... args) noexcept(std::is_nothrow_constructible_v<U, Args...>)
       : storage(in_place_flag, std::forward<Args>(args)...),
         index_(type_index_v<U, Ts...>) {}
 
   template<size_t I, typename... Args>
-  constexpr explicit variant_dtor_base(in_place_index_t<I> in_place_flag, Args&& ... args)
+  constexpr explicit variant_dtor_base(in_place_index_t<I> in_place_flag,
+                                       Args&& ... args) noexcept(std::is_nothrow_constructible_v<types_at_t<I, Ts...>,
+                                                                                                 Args...>)
       : storage(in_place_flag, std::forward<Args>(args)...),
         index_(I) {}
 

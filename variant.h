@@ -33,6 +33,7 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
   using traits = variant_utils::variant_traits<Ts...>;
  public:
   using base::emplace;
+
   constexpr variant() = default;
   constexpr variant(variant const&) = default;
   constexpr variant(variant&&) = default;
@@ -43,7 +44,7 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
   template<typename U, typename... Args, std::enable_if_t<
       variant_utils::exactly_once_v<U, Ts...> && std::is_constructible_v<U, Args...>, int> = 0>
   constexpr explicit variant(in_place_type_t<U> in_place_flag, Args&& ...args)
-      : base(in_place_flag, std::forward<Args>(args)...), enable_base{} {}
+      : variant(in_place_index<variant_utils::type_index_v<U, Ts...>>, std::forward<Args>(args)...) {}
 
   template<size_t I, typename... Args, std::enable_if_t<
       I < sizeof...(Ts) && std::is_constructible_v<variant_utils::types_at_t<I, Ts...>, Args...>, int> = 0>
@@ -57,7 +58,7 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
                                             && std::is_constructible_v<variant_utils::find_overload_t<T, Ts...>, T>,
                                         int> = 0>
   constexpr variant(T&& t) noexcept(std::is_nothrow_constructible_v<variant_utils::find_overload_t<T, Ts...>, T>)
-      : base(in_place_type_t<variant_utils::find_overload_t<T, Ts...>>(), std::forward<T>(t)), enable_base{} {}
+      : variant(in_place_type_t<variant_utils::find_overload_t<T, Ts...>>(), std::forward<T>(t)) {}
 
   template<typename T, std::enable_if_t<(sizeof...(Ts) > 0)
                                             && !std::is_same_v<std::decay_t<T>, variant>
@@ -178,7 +179,7 @@ constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
   if ((vars.valueless_by_exception() || ...)) {
     throw bad_variant_access();
   }
-  return variant_utils::get_from_table(variant_utils::visit_table<false, Visitor&&, Variants&&...>::array,
+  return variant_utils::get_from_table(variant_utils::visit_table<false, Visitor&&, Variants&& ...>::array,
                                        vars.index()...)(std::forward<Visitor>(vis),
                                                         std::forward<Variants>(vars)...);
 }

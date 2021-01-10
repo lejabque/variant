@@ -38,7 +38,7 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
       this->index_ = variant_npos;
       return *this;
     }
-    visit_indexed([this, &other](auto& this_value, auto&& other_value, auto this_index, auto other_index) {
+    visit_indexed([this](auto& this_value, auto&& other_value, auto this_index, auto other_index) {
       if constexpr (this_index == other_index) {
         /*
          * Otherwise, if rhs holds the same alternative as *this, assigns std::get<j>(std::move(rhs)) to the value
