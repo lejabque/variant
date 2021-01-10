@@ -30,8 +30,7 @@ struct variant_copy_ctor_base<false, Ts...> : variant_move_assign_base_t<Ts...> 
     this->index_ = other.index_;
     if (this->index_ != variant_npos) {
       visit_indexed([this, &other](auto const& other_value, auto other_index) {
-        constexpr size_t other_index_v = decltype(other_index)::value;
-        this->storage.template copy_stg<other_index_v>(other.storage);
+        this->storage.template copy_stg<other_index>(other.storage);
       }, other);
     }
   };

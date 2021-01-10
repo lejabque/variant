@@ -32,9 +32,8 @@ struct variant_move_ctor_base<false, Ts...> : variant_dtor_base_t<Ts...> {
     this->index_ = other.index_;
     if (this->index_ != variant_npos) {
       visit_indexed([this, &other](auto&& other_value, auto other_index) {
-        constexpr size_t other_index_v = decltype(other_index)::value;
-        this->storage.template move_stg<other_index_v>(std::move(other.storage));
-      }, other);
+        this->storage.template move_stg<other_index>(std::move(other.storage));
+      }, std::move(other));
     }
   };
 

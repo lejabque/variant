@@ -41,9 +41,7 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
       return *this;
     }
     visit_indexed([this, &other](auto& this_value, auto&& other_value, auto this_index, auto other_index) {
-      constexpr size_t this_index_v = decltype(this_index)::value;
-      constexpr size_t other_index_v = decltype(other_index)::value;
-      if constexpr (this_index_v == other_index_v) {
+      if constexpr (this_index == other_index) {
         /*
          * Otherwise, if rhs holds the same alternative as *this, assigns std::get<j>(std::move(rhs)) to the value
          * contained in *this, with j being index(). If an exception is thrown, *this does not become valueless:
@@ -56,7 +54,7 @@ struct variant_move_assign_base<false, Ts...> : variant_move_ctor_base_t<Ts...> 
          * equivalent to this->emplace<rhs.index()>(get<rhs.index()>(std::move(rhs))).
          * If an exception is thrown by T_i's move constructor, *this becomes valueless_by_exception.
          */
-        this->template emplace<other_index_v>(std::move(other_value));
+        this->template emplace<other_index>(std::move(other_value));
       }
     }, *this, std::move(other));
     return *this;

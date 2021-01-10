@@ -41,9 +41,7 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
       return *this;
     }
     visit_indexed([this, &other](auto& this_value, auto const& other_value, auto this_index, auto other_index) {
-      constexpr size_t this_index_v = decltype(this_index)::value;
-      constexpr size_t other_index_v = decltype(other_index)::value;
-      if constexpr (this_index_v == other_index_v) {
+      if constexpr (this_index == other_index) {
         /*
          * Otherwise, if rhs holds the same alternative as *this,
          * assigns the value contained in rhs to the value contained in *this.
@@ -51,14 +49,14 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
          */
         this_value = other_value;
       } else {
-        if constexpr(std::is_nothrow_copy_constructible_v<types_at_t<other_index_v, Ts...>>
-            || !std::is_nothrow_move_constructible_v<types_at_t<other_index_v, Ts...>>) {
+        if constexpr(std::is_nothrow_copy_constructible_v<types_at_t<other_index, Ts...>>
+            || !std::is_nothrow_move_constructible_v<types_at_t<other_index, Ts...>>) {
           /*
            * Otherwise, if the alternative held by rhs is either nothrow copy constructible or not nothrow move constructible
            * (as determined by std::is_nothrow_copy_constructible and std::is_nothrow_move_constructible, respectively),
            * equivalent to this->emplace<rhs.index()>(get<rhs.index()>(rhs)).
            */
-          this->template emplace<other_index_v>(other_value);
+          this->template emplace<other_index>(other_value);
         } else {
           // Otherwise, equivalent to this->operator=(variant(rhs)). Note that *this may become valueless_by_exception as described in (2).
           this->operator=(variant_copy_assign_base(other));
