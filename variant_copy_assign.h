@@ -7,14 +7,12 @@ struct variant_copy_assign_base : variant_copy_ctor_base_t<Ts...> {
   using base = variant_copy_ctor_base_t<Ts...>;
   using base::base;
   using base::emplace;
-  constexpr variant_copy_assign_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
+  constexpr variant_copy_assign_base() = default;
   constexpr variant_copy_assign_base(variant_copy_assign_base const&) = default;
-  constexpr variant_copy_assign_base(variant_copy_assign_base&& other) noexcept(std::is_nothrow_move_constructible_v<
-      base>) = default;
+  constexpr variant_copy_assign_base(variant_copy_assign_base&& other) = default;
 
   constexpr variant_copy_assign_base& operator=(variant_copy_assign_base const&) = default;
-  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) noexcept(std::is_nothrow_move_assignable_v<
-      base>) = default;
+  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) = default;
 
   ~variant_copy_assign_base() = default;
 };
@@ -26,8 +24,7 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
   using base::emplace;
   constexpr variant_copy_assign_base() noexcept(std::is_nothrow_default_constructible_v<base>) = default;
   constexpr variant_copy_assign_base(variant_copy_assign_base const&) = default;
-  constexpr variant_copy_assign_base(variant_copy_assign_base&& other) noexcept(std::is_nothrow_move_constructible_v<
-      base>) = default;
+  constexpr variant_copy_assign_base(variant_copy_assign_base&& other) = default;
 
   constexpr variant_copy_assign_base& operator=(variant_copy_assign_base const& other) {
     if (this->index_ == variant_npos && other.index_ == variant_npos) {
@@ -65,8 +62,7 @@ struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> 
     }, *this, other);
     return *this;
   };
-  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) noexcept(std::is_nothrow_move_assignable_v<
-      base>) = default;
+  constexpr variant_copy_assign_base& operator=(variant_copy_assign_base&&) = default;
 
   ~variant_copy_assign_base() = default;
 };

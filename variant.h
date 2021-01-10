@@ -33,12 +33,12 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
   using traits = variant_utils::variant_traits<Ts...>;
  public:
   using base::emplace;
-  constexpr variant() noexcept(traits::noexcept_value::default_ctor) = default;
+  constexpr variant() = default;
   constexpr variant(variant const&) = default;
-  constexpr variant(variant&&) noexcept(traits::noexcept_value::move_ctor) = default;
+  constexpr variant(variant&&) = default;
 
   constexpr variant& operator=(variant const&) = default;
-  constexpr variant& operator=(variant&&) noexcept(traits::noexcept_value::move_assign) = default;
+  constexpr variant& operator=(variant&&) = default;
 
   template<typename U, typename... Args, std::enable_if_t<
       variant_utils::exactly_once_v<U, Ts...> && std::is_constructible_v<U, Args...>, int> = 0>
@@ -132,14 +132,12 @@ constexpr auto get_if(variant<Types...> const* v) noexcept {
 
 template<typename Target, typename... Types>
 constexpr auto get_if(variant<Types...>* v) noexcept {
-  return v == nullptr || variant_utils::type_index_v<Target, Types...> != v->index() ?
-         nullptr : &get<variant_utils::type_index_v<Target, Types...>>(*v);
+  return get_if<variant_utils::type_index_v<Target, Types...>>(v);
 }
 
 template<typename Target, typename... Types>
 constexpr auto get_if(variant<Types...> const* v) noexcept {
-  return v == nullptr || variant_utils::type_index_v<Target, Types...> != v->index() ?
-         nullptr : &get<variant_utils::type_index_v<Target, Types...>>(*v);
+  return get_if<variant_utils::type_index_v<Target, Types...>>(v);
 }
 
 template<typename Target, typename... Types>

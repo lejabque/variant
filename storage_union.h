@@ -7,12 +7,12 @@ inline constexpr variant_dummy_t variant_dummy;
 template<bool is_trivial_dtor, typename T>
 struct value_holder {
   using Type = T;
-  constexpr value_holder() noexcept(std::is_nothrow_default_constructible_v<T>) = default;
+  constexpr value_holder() = default;
   constexpr value_holder(value_holder const&) = default;
-  constexpr value_holder(value_holder&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
+  constexpr value_holder(value_holder&&) = default;
 
   constexpr value_holder& operator=(value_holder const&) = default;
-  constexpr value_holder& operator=(value_holder&&) noexcept(std::is_nothrow_move_assignable_v<T>) = default;
+  constexpr value_holder& operator=(value_holder&&) = default;
 
   template<typename... Args>
   constexpr explicit value_holder(in_place_type_t<T>, Args&& ... args)

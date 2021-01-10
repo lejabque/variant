@@ -8,16 +8,16 @@ namespace variant_utils {
 template<bool is_trivial, typename... Ts>
 struct variant_dtor_base {
   using storage_t = storage_union<Ts...>;
-  constexpr variant_dtor_base() noexcept(std::is_nothrow_default_constructible_v<storage_t>) = default;
+  constexpr variant_dtor_base() = default;
   constexpr explicit variant_dtor_base(variant_dummy_t) noexcept(std::is_nothrow_constructible_v<storage_t,
                                                                                                  variant_dummy_t>)
       : storage(variant_dummy) {};
 
   constexpr variant_dtor_base(variant_dtor_base const& other) = default;
-  constexpr variant_dtor_base(variant_dtor_base&& other) noexcept(std::is_nothrow_move_constructible_v<storage_t>) = default;
+  constexpr variant_dtor_base(variant_dtor_base&& other) = default;
 
   constexpr variant_dtor_base& operator=(variant_dtor_base const&) = default;
-  constexpr variant_dtor_base& operator=(variant_dtor_base&&) noexcept(std::is_nothrow_move_assignable_v<storage_t>) = default;
+  constexpr variant_dtor_base& operator=(variant_dtor_base&&) = default;
 
   template<typename U, typename... Args>
   constexpr explicit variant_dtor_base(in_place_type_t<U> in_place_flag, Args&& ... args)
@@ -31,15 +31,8 @@ struct variant_dtor_base {
 
   template<size_t I, class... Args>
   decltype(auto) emplace(Args&& ...args) {
-    if (this->index_ != variant_npos) {
-      this->destroy_stg();
-    }
-    try {
-      this->storage.template emplace_stg<I>(std::forward<Args>(args)...);
-    } catch (...) {
-      this->index_ = variant_npos;
-      throw;
-    }
+    this->index_ = variant_npos;
+    this->storage.template emplace_stg<I>(std::forward<Args>(args)...);
     this->index_ = I;
     return get_impl<I>(*this);
   }
@@ -63,16 +56,16 @@ struct variant_dtor_base {
 template<typename... Ts>
 struct variant_dtor_base<false, Ts...> {
   using storage_t = storage_union<Ts...>;
-  constexpr variant_dtor_base() noexcept(std::is_nothrow_default_constructible_v<storage_t>) = default;
+  constexpr variant_dtor_base() = default;
   constexpr explicit variant_dtor_base(variant_dummy_t) noexcept(std::is_nothrow_constructible_v<storage_t,
                                                                                                  variant_dummy_t>)
       : storage(variant_dummy) {};
 
   constexpr variant_dtor_base(variant_dtor_base const& other) = default;
-  constexpr variant_dtor_base(variant_dtor_base&& other) noexcept(std::is_nothrow_move_constructible_v<storage_t>) = default;
+  constexpr variant_dtor_base(variant_dtor_base&& other) = default;
 
   constexpr variant_dtor_base& operator=(variant_dtor_base const&) = default;
-  constexpr variant_dtor_base& operator=(variant_dtor_base&&) noexcept(std::is_nothrow_move_assignable_v<storage_t>) = default;
+  constexpr variant_dtor_base& operator=(variant_dtor_base&&) = default;
 
   template<typename U, typename... Args>
   constexpr explicit variant_dtor_base(in_place_type_t<U> in_place_flag, Args&& ... args)
@@ -99,12 +92,7 @@ struct variant_dtor_base<false, Ts...> {
     if (this->index_ != variant_npos) {
       this->destroy_stg();
     }
-    try {
-      this->storage.template emplace_stg<I>(std::forward<Args>(args)...);
-    } catch (...) {
-      this->index_ = variant_npos;
-      throw;
-    }
+    this->storage.template emplace_stg<I>(std::forward<Args>(args)...);
     this->index_ = I;
     return get_impl<I>(*this);
   }
@@ -121,6 +109,7 @@ struct variant_dtor_base<false, Ts...> {
         this_value.~this_type();
       }, *this);
     }
+    index_ = variant_npos;
   }
 
   storage_t storage;
