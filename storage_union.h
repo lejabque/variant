@@ -121,8 +121,7 @@ union storage_union<T, Ts...> {
   constexpr explicit storage_union(variant_dummy_t) noexcept
       : dummy() {};
 
-  constexpr storage_union()
-  noexcept(std::is_nothrow_default_constructible_v<value_holder_t>)
+  constexpr storage_union() noexcept(std::is_nothrow_default_constructible_v<value_holder_t>)
       : value() {};
 
   template<typename U, typename... Args>
@@ -140,15 +139,6 @@ union storage_union<T, Ts...> {
   template<typename... Args>
   constexpr explicit storage_union(in_place_index_t<0> in_place_flag, Args&& ... args)
       : value(in_place_type<T>, std::forward<Args>(args)...) {}
-
-  template<size_t I>
-  constexpr void destroy_stg() {
-    if constexpr (I == 0) {
-      reinterpret_cast<T*>(&value.obj)->~T();
-    } else {
-      stg.template destroy_stg<I - 1>();
-    }
-  }
 
   template<size_t I>
   void copy_stg(storage_union const& other) {
