@@ -6,7 +6,7 @@ template<bool is_trivial, typename... Ts>
 struct variant_move_ctor_base : variant_dtor_base_t<Ts...> {
   using base = variant_dtor_base_t<Ts...>;
   using base::base;
-  using base::emplace;
+
   constexpr variant_move_ctor_base() = default;
   constexpr variant_move_ctor_base(variant_move_ctor_base const&) = default;
   constexpr variant_move_ctor_base(variant_move_ctor_base&& other) = default;
@@ -21,7 +21,7 @@ template<typename... Ts>
 struct variant_move_ctor_base<false, Ts...> : variant_dtor_base_t<Ts...> {
   using base = variant_dtor_base_t<Ts...>;
   using base::base;
-  using base::emplace;
+
   constexpr variant_move_ctor_base() = default;
   constexpr variant_move_ctor_base(variant_move_ctor_base const&) = default;
 

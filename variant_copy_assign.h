@@ -6,7 +6,6 @@ template<bool is_trivial, typename... Ts>
 struct variant_copy_assign_base : variant_copy_ctor_base_t<Ts...> {
   using base = variant_copy_ctor_base_t<Ts...>;
   using base::base;
-  using base::emplace;
 
   constexpr variant_copy_assign_base() noexcept(variant_utils::variant_traits<Ts...>::noexcept_value::default_ctor)
       : variant_copy_assign_base(in_place_index<0>) {}
@@ -23,7 +22,7 @@ template<typename... Ts>
 struct variant_copy_assign_base<false, Ts...> : variant_copy_ctor_base_t<Ts...> {
   using base = variant_copy_ctor_base_t<Ts...>;
   using base::base;
-  using base::emplace;
+
   constexpr variant_copy_assign_base() noexcept(variant_utils::variant_traits<Ts...>::noexcept_value::default_ctor)
       : variant_copy_assign_base(in_place_index<0>) {}
   constexpr variant_copy_assign_base(variant_copy_assign_base const&) = default;

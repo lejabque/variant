@@ -6,7 +6,7 @@ template<bool is_trivial, typename... Ts>
 struct variant_copy_ctor_base : variant_move_assign_base_t<Ts...> {
   using base = variant_move_assign_base_t<Ts...>;
   using base::base;
-  using base::emplace;
+
   constexpr variant_copy_ctor_base() = default;
 
   constexpr variant_copy_ctor_base(variant_copy_ctor_base const& other) = default;
@@ -22,7 +22,7 @@ template<typename... Ts>
 struct variant_copy_ctor_base<false, Ts...> : variant_move_assign_base_t<Ts...> {
   using base = variant_move_assign_base_t<Ts...>;
   using base::base;
-  using base::emplace;
+
   constexpr variant_copy_ctor_base() = default;
 
   // https://godbolt.org/z/rWvn4f - копи-конструктор для нетривиальных не constexpr

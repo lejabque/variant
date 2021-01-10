@@ -32,7 +32,6 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
   using enable_base = variant_utils::enable_bases<Ts...>;
   using traits = variant_utils::variant_traits<Ts...>;
  public:
-  using base::emplace;
 
   constexpr variant() = default;
   constexpr variant(variant const&) = default;
@@ -78,6 +77,18 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
       }
     }
     return *this;
+  }
+
+  template<size_t I, typename... Args, std::enable_if_t<std::is_constructible_v<variant_utils::types_at_t<I, Ts...>,
+                                                                                Args...>, int> = 0>
+  decltype(auto) emplace(Args&& ...args) {
+    return base::template emplace<I>(std::forward<Args>(args)...);
+  }
+
+  template<typename T, typename... Args, std::enable_if_t<std::is_constructible_v<T, Args...>
+                                                              && variant_utils::exactly_once_v<T, Ts...>, int> = 0>
+  T& emplace(Args&& ...args) {
+    return base::template emplace<variant_utils::type_index_v<T, Ts...>>(std::forward<Args>(args)...);
   }
 
   void swap(variant& other) noexcept(traits::noexcept_value::swap) {
