@@ -178,7 +178,7 @@ constexpr decltype(auto) visit(Visitor&& vis, Variants&& ... vars) {
   if ((vars.valueless_by_exception() || ...)) {
     throw bad_variant_access();
   }
-  return variant_utils::get_from_table(variant_utils::table_cache<false, Visitor&&, Variants&&...>::array,
+  return variant_utils::get_from_table(variant_utils::visit_table<false, Visitor&&, Variants&&...>::array,
                                        vars.index()...)(std::forward<Visitor>(vis),
                                                         std::forward<Variants>(vars)...);
 }

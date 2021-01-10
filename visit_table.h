@@ -70,10 +70,10 @@ using table_cache_t = table_cache_impl<indexed, R, Visitor, 0,
 
 
 template<bool indexed, typename Visitor, typename... Variants>
-struct table_cache;
+struct visit_table;
 
 template<typename Visitor, typename... Variants>
-struct table_cache<true, Visitor, Variants...> {
+struct visit_table<true, Visitor, Variants...> {
   static constexpr auto array = table_cache_t<true,
                                               std::invoke_result_t<Visitor,
                                                                    alternative_t<0, Variants&&>...,
@@ -82,7 +82,7 @@ struct table_cache<true, Visitor, Variants...> {
 };
 
 template<typename Visitor, typename... Variants>
-struct table_cache<false, Visitor, Variants...> {
+struct visit_table<false, Visitor, Variants...> {
   static constexpr auto array = table_cache_t<false,
                                               std::invoke_result_t<Visitor,
                                                                    alternative_t<0, Variants&&>...>,
@@ -91,7 +91,7 @@ struct table_cache<false, Visitor, Variants...> {
 
 template<typename Visitor, typename... Variants>
 constexpr decltype(auto) visit_indexed(Visitor&& vis, Variants&& ... vars) {
-  return get_from_table(table_cache<true, Visitor&&, Variants&& ...>::array,
+  return get_from_table(visit_table<true, Visitor&&, Variants&& ...>::array,
                         vars.index()...)(std::forward<Visitor>(vis),
                                          std::forward<Variants>(vars)...);
 }
