@@ -91,7 +91,7 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
     } else if (other.index_ == variant_npos) {
       visit_indexed([&other](auto& this_value, auto this_index) {
         other.template emplace<this_index>(std::move(this_value));
-      }, other);
+      }, *this);
       this->destroy_stg();
       this->index_ = variant_npos;
     } else {
