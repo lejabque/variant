@@ -42,7 +42,7 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
 
   template<typename U, typename... Args, std::enable_if_t<
       variant_utils::exactly_once_v<U, Ts...> && std::is_constructible_v<U, Args...>, int> = 0>
-  constexpr explicit variant(in_place_type_t<U> in_place_flag, Args&& ...args)
+  constexpr explicit variant(in_place_type_t<U>, Args&& ...args)
       : variant(in_place_index<variant_utils::type_index_v<U, Ts...>>, std::forward<Args>(args)...) {}
 
   template<size_t I, typename... Args, std::enable_if_t<
@@ -99,13 +99,11 @@ class variant : variant_utils::variant_copy_assign_base_t<Ts...>,
         this->template emplace<other_index>(std::move(other_value));
       }, other);
       other.destroy_stg();
-      other.index_ = variant_npos;
     } else if (other.index_ == variant_npos) {
       visit_indexed([&other](auto& this_value, auto this_index) {
         other.template emplace<this_index>(std::move(this_value));
       }, *this);
       this->destroy_stg();
-      this->index_ = variant_npos;
     } else {
       visit_indexed([this, &other](auto& this_value, auto& other_value, auto this_index, auto other_index) {
         if constexpr(this_index == other_index) {
