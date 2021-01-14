@@ -29,7 +29,7 @@ struct table_cache_impl<false, R, Visitor, CurrentLvl,
                         std::index_sequence<Prefix...>, std::index_sequence<>, Variants...> {
   static constexpr auto array() {
     return [](Visitor vis, Variants... vars) {
-      return vis(get_impl<Prefix>(static_cast<Variants>(vars))...);
+      return static_cast<Visitor>(vis)(get_impl<Prefix>(static_cast<Variants>(vars))...);
     };
   }
 };
@@ -39,7 +39,7 @@ struct table_cache_impl<true, R, Visitor, CurrentLvl,
                         std::index_sequence<Prefix...>, std::index_sequence<>, Variants...> {
   static constexpr auto array() {
     return [](Visitor vis, Variants... vars) {
-      return vis(get_impl<Prefix>(static_cast<Variants>(vars))..., std::integral_constant<size_t, Prefix>{}...);
+      return static_cast<Visitor>(vis)(get_impl<Prefix>(static_cast<Variants>(vars))..., std::integral_constant<size_t, Prefix>{}...);
     };
   }
 };
@@ -75,7 +75,7 @@ struct visit_table;
 template<typename Visitor, typename... Variants>
 struct visit_table<true, Visitor, Variants...> {
   static constexpr auto array = table_cache_t<true,
-                                              std::invoke_result_t<Visitor,
+                                              std::invoke_result_t<Visitor&&,
                                                                    alternative_t<0, Variants&&>...,
                                                                    value_holder_zero<Variants>...>,
                                               Visitor&&, Variants&& ...>::array();
@@ -84,7 +84,7 @@ struct visit_table<true, Visitor, Variants...> {
 template<typename Visitor, typename... Variants>
 struct visit_table<false, Visitor, Variants...> {
   static constexpr auto array = table_cache_t<false,
-                                              std::invoke_result_t<Visitor,
+                                              std::invoke_result_t<Visitor&&,
                                                                    alternative_t<0, Variants&&>...>,
                                               Visitor&&, Variants&& ...>::array();
 };
