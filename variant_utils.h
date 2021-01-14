@@ -61,8 +61,18 @@ struct alternative<I, base<Ts...>> {
 };
 
 template<size_t I, template<typename...> typename base, typename... Ts>
+struct alternative<I, const base<Ts...>> {
+  using type = const types_at_t<I, Ts...>;
+};
+
+template<size_t I, template<typename...> typename base, typename... Ts>
 struct alternative<I, base<Ts...>&&> {
   using type = types_at_t<I, Ts...>&&;
+};
+
+template<size_t I, template<typename...> typename base, typename... Ts>
+struct alternative<I, base<Ts...> const&&> {
+  using type = const types_at_t<I, Ts...>&&;
 };
 
 template<size_t I, template<typename...> typename base, typename... Ts>
@@ -81,8 +91,18 @@ struct alternative<I, base<flag, Ts...>> {
 };
 
 template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>
+struct alternative<I, base<flag, Ts...> const> {
+  using type = const types_at_t<I, Ts...>;
+};
+
+template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>
 struct alternative<I, base<flag, Ts...>&&> {
   using type = types_at_t<I, Ts...>&&;
+};
+
+template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>
+struct alternative<I, base<flag, Ts...> const&&> {
+  using type = types_at_t<I, Ts...> const&&;
 };
 
 template<size_t I, template<bool, typename...> typename base, bool flag, typename... Ts>

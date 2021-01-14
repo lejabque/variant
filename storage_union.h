@@ -32,7 +32,7 @@ struct value_holder {
   }
 
   constexpr T const&& get_obj() const&& noexcept {
-    return obj;
+    return std::move(obj);
   }
 
   constexpr T& get_obj()& noexcept {
@@ -40,7 +40,7 @@ struct value_holder {
   }
 
   constexpr T&& get_obj()&& noexcept {
-    return obj;
+    return std::move(obj);
   }
 
   ~value_holder() = default;
@@ -82,7 +82,7 @@ struct value_holder<false, T> {
   }
 
   constexpr T const&& get_obj() const&& noexcept {
-    return *reinterpret_cast<T const*>(&obj);
+    return std::move(*reinterpret_cast<T const*>(&obj));
   }
 
   constexpr T& get_obj()& noexcept {
@@ -90,7 +90,7 @@ struct value_holder<false, T> {
   }
 
   constexpr T&& get_obj()&& noexcept {
-    return *reinterpret_cast<T*>(&obj);
+    return std::move(*reinterpret_cast<T*>(&obj));
   }
 
   std::aligned_storage_t<sizeof(T), alignof(T)> obj;
@@ -148,7 +148,7 @@ union storage_union<T, Ts...> {
   }
 
   constexpr storage_union<Ts...> const&& get_stg() const&& noexcept {
-    return stg;
+    return std::move(stg);
   }
 
   constexpr storage_union<Ts...>& get_stg()& noexcept {
@@ -156,7 +156,7 @@ union storage_union<T, Ts...> {
   }
 
   constexpr storage_union<Ts...>&& get_stg()&& noexcept {
-    return stg;
+    return std::move(stg);
   }
 
   constexpr T const& get_obj() const& noexcept {
@@ -164,7 +164,7 @@ union storage_union<T, Ts...> {
   }
 
   constexpr T const&& get_obj() const&& noexcept {
-    return value.get_obj();
+    return std::move(value.get_obj());
   }
 
   constexpr T& get_obj()& noexcept {
@@ -172,11 +172,11 @@ union storage_union<T, Ts...> {
   }
 
   constexpr T&& get_obj()&& noexcept {
-    return value.get_obj();
+    return std::move(value.get_obj());
   }
 
   template<size_t ind>
-  constexpr decltype(auto) get_stg() const {
+  constexpr decltype(auto) get_stg() const& {
     if constexpr (ind == 0) {
       return get_obj();
     } else {
@@ -185,11 +185,28 @@ union storage_union<T, Ts...> {
   }
 
   template<size_t ind>
-  constexpr decltype(auto) get_stg() {
+  constexpr decltype(auto) get_stg() const&& {
+    if constexpr (ind == 0) {
+      return std::move(*this).get_obj();
+    } else {
+      return std::move(stg).template get_stg<ind - 1>();
+    }
+  }
+  template<size_t ind>
+  constexpr decltype(auto) get_stg()& {
     if constexpr (ind == 0) {
       return get_obj();
     } else {
       return stg.template get_stg<ind - 1>();
+    }
+  }
+
+  template<size_t ind>
+  constexpr decltype(auto) get_stg()&& {
+    if constexpr (ind == 0) {
+      return std::move(*this).get_obj();
+    } else {
+      return std::move(stg).template get_stg<ind - 1>();
     }
   }
 

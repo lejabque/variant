@@ -76,7 +76,7 @@ template<typename Visitor, typename... Variants>
 struct visit_table<true, Visitor, Variants...> {
   static constexpr auto array = table_cache_t<true,
                                               std::invoke_result_t<Visitor&&,
-                                                                   alternative_t<0, Variants&&>...,
+                                                                   alternative_t<0, Variants&&>&&...,
                                                                    value_holder_zero<Variants>...>,
                                               Visitor&&, Variants&& ...>::array();
 };
@@ -85,7 +85,7 @@ template<typename Visitor, typename... Variants>
 struct visit_table<false, Visitor, Variants...> {
   static constexpr auto array = table_cache_t<false,
                                               std::invoke_result_t<Visitor&&,
-                                                                   alternative_t<0, Variants&&>...>,
+                                                                   alternative_t<0, Variants&&>&&...>,
                                               Visitor&&, Variants&& ...>::array();
 };
 
