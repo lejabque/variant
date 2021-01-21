@@ -28,5 +28,5 @@ include_directories(.)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-sign-compare -pedantic")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined,address,leak -fno-sanitize-recover=all -D_GLIBCXX_DEBUG")
 
-add_executable(main variant_testing.cpp)
-target_link_libraries(main gtest_main)
+add_executable(variant_testing variant_testing.cpp)
+target_link_libraries(variant_testing gtest_main)
