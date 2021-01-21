@@ -3,9 +3,9 @@
 #include <type_traits>
 #include <vector>
 
+#include "test-classes.h"
 #include "variant.h"
 #include "gtest/gtest.h"
-#include "test-classes.h"
 
 TEST(traits, destructor) {
   using variant1 = variant<int, double, dummy_t>;
@@ -232,9 +232,7 @@ constexpr bool simple_move_ctor_test() {
   {
     variant<int, double> x{42};
     variant<int, double> y = std::move(x);
-    if (x.index() != y.index()
-     || x.index() != 0
-     || get<0>(x) != get<0>(y))
+    if (x.index() != y.index() || x.index() != 0 || get<0>(x) != get<0>(y))
       return false;
   }
   return true;
@@ -340,12 +338,14 @@ TEST(correctness, visit) {
   V v2 = 1337L;
   V v3 = 0.5;
   bool was_called = false;
-  visit([&](int i, long l, double d){
-    ASSERT_EQ(i, 42);
-    ASSERT_EQ(l, 1337L);
-    ASSERT_EQ(d, 0.5);
-    was_called = true;
-  }, v1, v2, v3);
+  visit(
+      [&](int i, long l, double d) {
+        ASSERT_EQ(i, 42);
+        ASSERT_EQ(l, 1337L);
+        ASSERT_EQ(d, 0.5);
+        was_called = true;
+      },
+      v1, v2, v3);
   ASSERT_TRUE(was_called);
 }
 
@@ -369,8 +369,7 @@ TEST(correctness, emplace) {
 constexpr bool in_place_ctor() {
   variant<bool, double> x1(in_place_type<double>, 42);
   variant<bool, double> x2(in_place_index<1>, 42);
-  return (x1.index() == 1 && get<1>(x1) == 42.0)
-      && (x2.index() == 1 && get<1>(x2) == 42.0);
+  return (x1.index() == 1 && get<1>(x1) == 42.0) && (x2.index() == 1 && get<1>(x2) == 42.0);
 }
 
 static_assert(in_place_ctor(), "Simple in-place ctor failed");
@@ -443,7 +442,7 @@ TEST(visits, visit_valueless) {
     x.emplace<throwing_move_operator_t>(throwing_move_operator_t{});
   } catch (std::exception const &item) {
     ASSERT_TRUE(x.valueless_by_exception());
-    auto visitor = [] (auto&& x) {  };
+    auto visitor = [](auto &&x) {};
     ASSERT_THROW(visit(visitor, x), bad_variant_access);
     return;
   }
@@ -454,25 +453,22 @@ TEST(visits, visit_valueless) {
 TEST(visits, visit_on_multiple) {
   variant<int, const int, int const, double> v;
   v.emplace<2>(42);
-  auto visitor = [] (auto x) -> int { return x; };
+  auto visitor = [](auto x) -> int { return x; };
   auto result = visit(visitor, v);
   ASSERT_EQ(result, 42);
 
-  auto visitor2 = [] (int x) -> int { return x; };
+  auto visitor2 = [](int x) -> int { return x; };
   result = visit(visitor2, v);
   ASSERT_EQ(result, 42);
 
-  auto visitor3 = [] (double const x) -> int { return x; };
+  auto visitor3 = [](double const x) -> int { return x; };
   result = visit(visitor3, v);
   ASSERT_EQ(result, 42);
 }
 
 TEST(visits, visit_overload) {
-  variant<char const*> v = "abce";
-  auto visitor = overload{
-      [] (std::string) -> bool { return false; },
-      [] (bool) -> bool { return true; }
-  };
+  variant<char const *> v = "abce";
+  auto visitor = overload{[](std::string) -> bool { return false; }, [](bool) -> bool { return true; }};
   ASSERT_TRUE(visit(visitor, v));
 }
 
