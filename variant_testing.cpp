@@ -585,14 +585,14 @@ TEST(constructor, move_only) {
 }
 
 TEST(variant, converting_ctor) {
-  my_variant<int32_t, double> a = 123;
+  variant<int32_t, double> a = 123;
   EXPECT_EQ(a.index(), 0);
   EXPECT_EQ(get<int32_t>(a), 123);
   EXPECT_EQ(get<0>(a), 123);
   EXPECT_THROW(get<double>(a), bad_variant_access);
   EXPECT_THROW(get<1>(a), bad_variant_access);
 
-  my_variant<test_object, double> b = test_object(123);
+  variant<test_object, double> b = test_object(123);
   EXPECT_EQ(b.index(), 0);
   EXPECT_EQ(get<test_object>(b), 123);
   EXPECT_EQ(get<0>(b), 123);
@@ -601,31 +601,32 @@ TEST(variant, converting_ctor) {
   EXPECT_THROW(get<double>(b), bad_variant_access);
   EXPECT_THROW(get<1>(b), bad_variant_access);
 
-  const my_variant<test_object, non_constexpr, int64_t> d = non_constexpr(322);
+  const variant<test_object, non_constexpr, int64_t> d = non_constexpr(322);
   EXPECT_EQ(d.index(), 1);
   EXPECT_EQ(get<non_constexpr>(d), 322);
   EXPECT_THROW(get<test_object>(d), bad_variant_access);
   EXPECT_THROW(get<int64_t>(d), bad_variant_access);
 
-  my_variant<std::string> v("abc");
+  variant<std::string> v("abc");
   // std::variant<std::string, std::string> w("abc"); // ill-formed
-  my_variant<std::string, const char*> x("abc"); // OK, chooses const char*
+  variant<std::string, const char*> x("abc"); // OK, chooses const char*
   EXPECT_EQ(x.index(), 1);
-//  std::variant<std::string, bool> y("abc"); // OK, chooses string; bool is not a candidate TODO: ???
-//  EXPECT_EQ(y.index(), 0);
-//  std::variant<float, long, double> z = 0; // OK, holds long TODO: ???
+  variant<std::string, bool> y("abc"); // OK, chooses string; bool is not a candidate
+  EXPECT_EQ(y.index(), 0);
+  variant<float, long, double> z = 0; // OK, holds long
   // float and double are not candidates
+  EXPECT_EQ(z.index(), 1);
 
   // constexpr test
   static_assert([]() {
-    my_variant<test_object, non_constexpr> d = test_object(322);
+    variant<test_object, non_constexpr> d = test_object(322);
     return get<test_object>(d) == 322 && d.index() == 0;
   }());
 }
 
 TEST(variant, trivial_copy_ctor) {
-  my_variant<int64_t, double> a(std::in_place_index<0>, 123);
-  my_variant<int64_t, double> a_copy(a);
+  variant<int64_t, double> a(std::in_place_index<0>, 123);
+  variant<int64_t, double> a_copy(a);
   EXPECT_EQ(get<int64_t>(a), 123);
   EXPECT_EQ(get<0>(a), 123);
   EXPECT_EQ(get<int64_t>(a_copy), 123);
@@ -635,8 +636,8 @@ TEST(variant, trivial_copy_ctor) {
   EXPECT_THROW(get<double>(a_copy), bad_variant_access);
   EXPECT_THROW(get<1>(a_copy), bad_variant_access);
 
-  my_variant<test_object, double> b(std::in_place_index<0>, 123);
-  my_variant<test_object, double> b_copy(b);
+  variant<test_object, double> b(std::in_place_index<0>, 123);
+  variant<test_object, double> b_copy(b);
   EXPECT_EQ(get<test_object>(b), 123);
   EXPECT_EQ(get<0>(b), 123);
   EXPECT_EQ(get<test_object>(b).assign(42), 42);
@@ -648,8 +649,8 @@ TEST(variant, trivial_copy_ctor) {
   EXPECT_THROW(get<double>(b_copy), bad_variant_access);
   EXPECT_THROW(get<1>(b_copy), bad_variant_access);
 
-  my_variant<test_object, non_constexpr, int64_t> d(std::in_place_index<1>, 322);
-  my_variant<test_object, non_constexpr, int64_t> d_copy(d);
+  variant<test_object, non_constexpr, int64_t> d(std::in_place_index<1>, 322);
+  variant<test_object, non_constexpr, int64_t> d_copy(d);
   EXPECT_EQ(get<non_constexpr>(d), 322);
   EXPECT_EQ(get<non_constexpr>(d_copy), 322);
   EXPECT_EQ(d_copy.index(), 1);
@@ -659,8 +660,8 @@ TEST(variant, trivial_copy_ctor) {
   EXPECT_THROW(get<int64_t>(d_copy), bad_variant_access);
   // constexpr test
   static_assert([]() {
-    my_variant<int, test_object> d(std::in_place_index<1>, 322);
-    my_variant<int, test_object> d_copy(d);
+    variant<int, test_object> d(std::in_place_index<1>, 322);
+    variant<int, test_object> d_copy(d);
     return get<test_object>(d) == 322 && d.index() == 1 && get<test_object>(d_copy) == 322 && d_copy.index();
   }());
 }
@@ -694,8 +695,8 @@ struct non_trivial_copy {
 };
 
 TEST(variant, non_trivial_copy_ctor) {
-  my_variant<non_trivial_copy, double> b(std::in_place_index<0>, 123);
-  my_variant<non_trivial_copy, double> b_copy(b);
+  variant<non_trivial_copy, double> b(std::in_place_index<0>, 123);
+  variant<non_trivial_copy, double> b_copy(b);
   EXPECT_EQ(get<non_trivial_copy>(b), 123);
   EXPECT_EQ(get<0>(b), 123);
   EXPECT_EQ(get<non_trivial_copy>(b).assign(42), 42);
@@ -707,8 +708,8 @@ TEST(variant, non_trivial_copy_ctor) {
   EXPECT_THROW(get<double>(b_copy), bad_variant_access);
   EXPECT_THROW(get<1>(b_copy), bad_variant_access);
 
-  my_variant<non_trivial_copy, non_constexpr, int64_t> d(std::in_place_index<1>, 322);
-  my_variant<non_trivial_copy, non_constexpr, int64_t> d_copy(d);
+  variant<non_trivial_copy, non_constexpr, int64_t> d(std::in_place_index<1>, 322);
+  variant<non_trivial_copy, non_constexpr, int64_t> d_copy(d);
   EXPECT_EQ(get<non_constexpr>(d), 322);
   EXPECT_EQ(get<non_constexpr>(d_copy), 322);
   EXPECT_EQ(d_copy.index(), 1);
@@ -719,13 +720,13 @@ TEST(variant, non_trivial_copy_ctor) {
 
   // https://godbolt.org/z/rWvn4f - копи-конструктор для нетривиальных не constexpr
 //  static_assert([]() {
-//    my_variant<int, non_trivial_copy> d(std::in_place_index<1>, 322);
-//    my_variant<int, non_trivial_copy> d_copy(d);
+//    variant<int, non_trivial_copy> d(std::in_place_index<1>, 322);
+//    variant<int, non_trivial_copy> d_copy(d);
 //    return get<non_trivial_copy>(d) == 322 && d.index() == 1 && get<non_trivial_copy>(d_copy) == 322 && d_copy.index();
 //  }());
 
-//  my_variant<non_trivial_copy, non_copy, int64_t> t(std::in_place_index<0>, 322);
-//  my_variant<non_trivial_copy, non_copy, int64_t> t_copy(t); // no overload
+//  variant<non_trivial_copy, non_copy, int64_t> t(std::in_place_index<0>, 322);
+//  variant<non_trivial_copy, non_copy, int64_t> t_copy(t); // no overload
 }
 
 struct trivial_move {
@@ -753,15 +754,15 @@ struct trivial_move {
 };
 
 TEST(variant, trivial_move_ctor) {
-  my_variant<int64_t, double> a(std::in_place_index<0>, 123);
-  my_variant<int64_t, double> a_move(std::move(a));
+  variant<int64_t, double> a(std::in_place_index<0>, 123);
+  variant<int64_t, double> a_move(std::move(a));
   EXPECT_EQ(get<int64_t>(a_move), 123);
   EXPECT_EQ(get<0>(a_move), 123);
   EXPECT_THROW(get<double>(a_move), bad_variant_access);
   EXPECT_THROW(get<1>(a_move), bad_variant_access);
 
-  my_variant<trivial_move, double> b(std::in_place_index<0>, 123);
-  my_variant<trivial_move, double> b_move(std::move(b));
+  variant<trivial_move, double> b(std::in_place_index<0>, 123);
+  variant<trivial_move, double> b_move(std::move(b));
   EXPECT_EQ(get<trivial_move>(b_move), 123);
   EXPECT_EQ(get<0>(b_move), 123);
   EXPECT_EQ(get<trivial_move>(b_move).assign(42), 42);
@@ -769,16 +770,16 @@ TEST(variant, trivial_move_ctor) {
   EXPECT_THROW(get<double>(b_move), bad_variant_access);
   EXPECT_THROW(get<1>(b_move), bad_variant_access);
 
-  my_variant<trivial_move, non_constexpr, int64_t> d(std::in_place_index<1>, 322);
-  my_variant<trivial_move, non_constexpr, int64_t> d_move(std::move(d));
+  variant<trivial_move, non_constexpr, int64_t> d(std::in_place_index<1>, 322);
+  variant<trivial_move, non_constexpr, int64_t> d_move(std::move(d));
   EXPECT_EQ(get<non_constexpr>(d_move), 322);
   EXPECT_EQ(d_move.index(), 1);
   EXPECT_THROW(get<trivial_move>(d_move), bad_variant_access);
   EXPECT_THROW(get<int64_t>(d_move), bad_variant_access);
   // constexpr test
   static_assert([]() {
-//    my_variant<int, trivial_move> a(std::in_place_index<1>, 322);
-//    my_variant<int, trivial_move> b(std::move(a));
+//    variant<int, trivial_move> a(std::in_place_index<1>, 322);
+//    variant<int, trivial_move> b(std::move(a));
 
     return std::is_trivially_move_constructible_v<storage_union<int, trivial_move>>;
     //return get<trivial_move>(b) == 322 && b.index() == 1;
@@ -786,48 +787,48 @@ TEST(variant, trivial_move_ctor) {
 }
 
 TEST(variant, non_trivial_move) {
-  my_variant<non_trivial_copy, double> b(std::in_place_index<0>, 123);
-  my_variant<non_trivial_copy, double> b_move(std::move(b));
+  variant<non_trivial_copy, double> b(std::in_place_index<0>, 123);
+  variant<non_trivial_copy, double> b_move(std::move(b));
   EXPECT_EQ(get<non_trivial_copy>(b_move), 123);
   EXPECT_EQ(get<0>(b_move), 123);
   EXPECT_THROW(get<double>(b_move), bad_variant_access);
   EXPECT_THROW(get<1>(b_move), bad_variant_access);
 
-  my_variant<non_trivial_copy, non_constexpr, int64_t> d(std::in_place_index<1>, 322);
-  my_variant<non_trivial_copy, non_constexpr, int64_t> d_move(std::move(d));
+  variant<non_trivial_copy, non_constexpr, int64_t> d(std::in_place_index<1>, 322);
+  variant<non_trivial_copy, non_constexpr, int64_t> d_move(std::move(d));
   EXPECT_EQ(get<non_constexpr>(d_move), 322);
   EXPECT_EQ(d_move.index(), 1);
   EXPECT_THROW(get<non_trivial_copy>(d_move), bad_variant_access);
   EXPECT_THROW(get<int64_t>(d_move), bad_variant_access);
 
-  my_variant<non_trivial_copy, int64_t> t(std::in_place_index<0>, 322);
-  my_variant<non_trivial_copy, int64_t> t_move(std::move(t));
+  variant<non_trivial_copy, int64_t> t(std::in_place_index<0>, 322);
+  variant<non_trivial_copy, int64_t> t_move(std::move(t));
 
   static_assert([]() {
-    my_variant<int32_t, int64_t> d(std::in_place_index<0>, 322);
-    my_variant<int32_t, int64_t> d_move(std::move(d));
+    variant<int32_t, int64_t> d(std::in_place_index<0>, 322);
+    variant<int32_t, int64_t> d_move(std::move(d));
     return get<int32_t>(d_move) == 322 && d_move.index() == 0;
   }());
 
   // https://godbolt.org/z/rWvn4f - мув-конструктор для нетривиального мува не constexpr
 //  static_assert([]() {
-//    my_variant<non_trivial_copy, int64_t> d(std::in_place_index<0>, 322);
-//    my_variant<non_trivial_copy, int64_t> d_move(std::move(d));
+//    variant<non_trivial_copy, int64_t> d(std::in_place_index<0>, 322);
+//    variant<non_trivial_copy, int64_t> d_move(std::move(d));
 //    return get<non_trivial_copy>(d_move) == 322 && d_move.index() == 0;
 //  }());
 
-  // my_variant<non_trivial_copy, non_copy, int64_t> t(std::in_place_index<0>, 322);
-//  my_variant<non_trivial_copy, non_copy, int64_t> t_copy(std::move(t)); // no overload
+  // variant<non_trivial_copy, non_copy, int64_t> t(std::in_place_index<0>, 322);
+//  variant<non_trivial_copy, non_copy, int64_t> t_copy(std::move(t)); // no overload
 }
 
 TEST(variant, emplace) {
-  my_variant<std::string, int64_t> v1;
+  variant<std::string, int64_t> v1;
   EXPECT_EQ(v1.emplace<0>("abc"), "abc");
   EXPECT_EQ(get<0>(v1), "abc");
   EXPECT_EQ(v1.emplace<std::string>("def"), "def");
   EXPECT_EQ(get<std::string>(v1), "def");
 
-  my_variant<std::string, std::string> v2;
+  variant<std::string, std::string> v2;
   EXPECT_EQ(v2.emplace<1>("ghi"), "ghi");
   EXPECT_EQ(get<1>(v2), "ghi");
 }
